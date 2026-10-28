@@ -44,6 +44,7 @@
             <span>告警管理</span>
           </template>
           <el-menu-item index="/alert-strategies">告警策略</el-menu-item>
+          <el-menu-item index="/alert-events">告警事件</el-menu-item>
           <el-menu-item index="/alert-groups">告警组</el-menu-item>
           <el-menu-item index="/notification-channels">通知渠道</el-menu-item>
         </el-sub-menu>
@@ -53,6 +54,7 @@
             <span>基础设施</span>
           </template>
           <el-menu-item index="/collectors">采集器管理</el-menu-item>
+          <el-menu-item index="/zone-coordinators">协调器</el-menu-item>
           <el-menu-item index="/credentials">凭据管理</el-menu-item>
           <el-menu-item index="/users">用户管理</el-menu-item>
         </el-sub-menu>
@@ -61,7 +63,7 @@
     <el-container>
       <el-header class="app-header">
         <div class="header-right">
-          <el-tag type="success">Phase 3</el-tag>
+          <el-tag type="success">Phase 4</el-tag>
           <el-dropdown>
             <span class="user-info">admin</span>
             <template #dropdown>

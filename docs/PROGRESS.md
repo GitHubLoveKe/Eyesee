@@ -48,6 +48,17 @@
 | T4 | 服务发现 | ✅ | - | ✅ | Prometheus http_sd格式 |
 | I4 | RC Worker | ✅ | - | ✅ | 执行器管理+心跳 |
 
+## Phase 4 模块进度
+
+| 模块 | 名称 | 后端 | 前端 | 测试 | 备注 |
+|------|------|------|------|------|------|
+| A4 | 告警收敛 | ✅ | ✅ | ✅ | 事件落库+认领+静默+统计 |
+| I2+ | 用户认证增强 | ✅ | ✅ | ✅ | 通知目标管理+密码修改 |
+| I1+ | 协调器集成 | ✅ | ✅ | ✅ | 区协调器CRUD+心跳 |
+| B1+ | 业务概览 | ✅ | - | ✅ | 按业务系统聚合仪表盘 |
+| T4+ | 服务发现配置 | ✅ | - | ✅ | SD配置管理(区别于T4只读) |
+| M2+ | 资源类型指标 | ✅ | - | ✅ | 类型-指标关联管理 |
+
 ## 后端架构
 
 ```
@@ -70,7 +81,8 @@ server/
 └── sql/postgres/                # PostgreSQL DDL迁移
     ├── 001_init.sql             # Phase 1 DDL
     ├── 002_phase2.sql           # Phase 2 DDL
-    └── 003_phase3.sql           # Phase 3 DDL
+    ├── 003_phase3.sql           # Phase 3 DDL
+    └── 004_phase4.sql           # Phase 4 DDL
 ```
 
 ## 前端架构
@@ -95,7 +107,9 @@ web/
 │   │   ├── scheduled-task/      # T5
 │   │   ├── rc-task/             # T2
 │   │   ├── metric/              # T3
-│   │   └── credential/          # M4
+│   │   ├── credential/          # M4
+│   │   ├── alert-event/         # A4
+│   │   └── coordinator/         # I1+
 │   ├── router/                  # 路由配置
 │   ├── App.vue
 │   └── main.js
@@ -120,6 +134,7 @@ bash deploy/podman/deploy.sh
 cat server/sql/postgres/001_init.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
 cat server/sql/postgres/002_phase2.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
 cat server/sql/postgres/003_phase3.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
+cat server/sql/postgres/004_phase4.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
 
 # 后端
 cd server && go run cmd/server/main.go

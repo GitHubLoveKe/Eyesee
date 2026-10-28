@@ -151,3 +151,46 @@ export const credentialApi = {
   update: (id, data) => api.put(`/credentials/${id}`, data),
   delete: (id) => api.delete(`/credentials/${id}`),
 }
+
+export const alertEventApi = {
+  list: (params) => api.get('/alert-events', { params }),
+  get: (id) => api.get(`/alert-events/${id}`),
+  create: (data) => api.post('/alert-events', data),
+  acknowledge: (id, data) => api.post(`/alert-events/${id}/acknowledge`, data),
+  statistics: (params) => api.get('/alert-events/statistics', { params }),
+}
+
+export const alertSilenceApi = {
+  list: (params) => api.get('/alert-silences', { params }),
+  create: (data) => api.post('/alert-silences', data),
+  revoke: (id) => api.post(`/alert-silences/${id}/revoke`),
+}
+
+export const userAuthApi = {
+  changePassword: (data) => api.post('/user-auth/password', data),
+  listTargets: (userId) => api.get(`/user-auth/${userId}/notification-targets`),
+  addTarget: (userId, data) => api.post(`/user-auth/${userId}/notification-targets`, data),
+  removeTarget: (id) => api.delete(`/user-auth/notification-targets/${id}`),
+  setPrimary: (userId, id) => api.post(`/user-auth/${userId}/notification-targets/${id}/primary`),
+}
+
+export const zoneCoordinatorApi = {
+  list: (params) => api.get('/zone-coordinators', { params }),
+  get: (id) => api.get(`/zone-coordinators/${id}`),
+  create: (data) => api.post('/zone-coordinators', data),
+  update: (id, data) => api.put(`/zone-coordinators/${id}`, data),
+  delete: (id) => api.delete(`/zone-coordinators/${id}`),
+  heartbeat: (id) => api.post(`/zone-coordinators/${id}/heartbeat`),
+}
+
+export const sdConfigApi = {
+  list: (params) => api.get('/sd-configs', { params }),
+  get: (id) => api.get(`/sd-configs/${id}`),
+  create: (data) => api.post('/sd-configs', data),
+  update: (id, data) => api.put(`/sd-configs/${id}`, data),
+  delete: (id) => api.delete(`/sd-configs/${id}`),
+}
+
+export const businessOverviewApi = {
+  get: (systemId) => api.get(`/business-overview/${systemId}`),
+}

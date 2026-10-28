@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"dcs/internal/model"
+	"time"
 )
 
 type BusinessSystemRepo interface {
@@ -248,4 +249,100 @@ type RCWorkerRepo interface {
 	Update(ctx context.Context, w *model.RCWorker) error
 	Delete(ctx context.Context, id string) error
 	UpdateHeartbeat(ctx context.Context, id string) error
+}
+
+type AlertEventRepo interface {
+	Create(ctx context.Context, e *model.AlertEvent) error
+	GetByID(ctx context.Context, id int64) (*model.AlertEvent, error)
+	List(ctx context.Context, filter AlertEventFilter) ([]*model.AlertEvent, int64, error)
+	UpdateStatus(ctx context.Context, id int64, status string, endsAt *time.Time) error
+	Statistics(ctx context.Context, zoneID string, period string) (*AlertStatistics, error)
+}
+
+type AlertEventFilter struct {
+	ZoneID      string
+	AlertName   string
+	Severity    []string
+	Status      []string
+	InstanceID  string
+	Fingerprint string
+	StartTime   *time.Time
+	EndTime     *time.Time
+	Offset      int
+	Limit       int
+}
+
+type AlertStatistics struct {
+	TotalFiring   int64            `json:"total_firing"`
+	TotalResolved int64            `json:"total_resolved"`
+	BySeverity    map[string]int64 `json:"by_severity"`
+	ByZone        []ZoneAlertCount `json:"by_zone"`
+	TopAlerts     []AlertCount     `json:"top_alerts"`
+}
+
+type ZoneAlertCount struct {
+	ZoneID   string `json:"zone_id"`
+	Firing   int64  `json:"firing"`
+	Resolved int64  `json:"resolved"`
+}
+
+type AlertCount struct {
+	AlertName string `json:"alert_name"`
+	Count     int64  `json:"count"`
+}
+
+type AlertAckRepo interface {
+	Create(ctx context.Context, ack *model.AlertAcknowledgement) error
+	GetByEventID(ctx context.Context, eventID int64) (*model.AlertAcknowledgement, error)
+}
+
+type AlertSilenceRepo interface {
+	Create(ctx context.Context, s *model.AlertSilence) error
+	GetByID(ctx context.Context, id string) (*model.AlertSilence, error)
+	List(ctx context.Context, zoneID, status string) ([]*model.AlertSilence, error)
+	Revoke(ctx context.Context, id string) error
+}
+
+type UserNotificationTargetRepo interface {
+	Create(ctx context.Context, t *model.UserNotificationTarget) error
+	ListByUserID(ctx context.Context, userID string) ([]*model.UserNotificationTarget, error)
+	Delete(ctx context.Context, id int64) error
+	SetPrimary(ctx context.Context, userID string, id int64) error
+}
+
+type ZoneCoordinatorRepo interface {
+	Create(ctx context.Context, c *model.ZoneCoordinator) error
+	GetByID(ctx context.Context, id string) (*model.ZoneCoordinator, error)
+	List(ctx context.Context, zoneID string) ([]*model.ZoneCoordinator, error)
+	Update(ctx context.Context, c *model.ZoneCoordinator) error
+	Delete(ctx context.Context, id string) error
+	UpdateHeartbeat(ctx context.Context, id string) error
+}
+
+type ServiceDiscoveryConfigRepo interface {
+	Create(ctx context.Context, sd *model.ServiceDiscovery) error
+	GetByID(ctx context.Context, id string) (*model.ServiceDiscovery, error)
+	List(ctx context.Context, zoneID string) ([]*model.ServiceDiscovery, int64, error)
+	Update(ctx context.Context, sd *model.ServiceDiscovery) error
+	Delete(ctx context.Context, id string) error
+}
+
+type ResourceTypeMetricRepo interface {
+	Link(ctx context.Context, typeID, metricID string) error
+	Unlink(ctx context.Context, typeID, metricID string) error
+	ListByType(ctx context.Context, typeID string) ([]*model.ResourceTypeMetric, error)
+}
+
+type BusinessOverviewRepo interface {
+	GetOverview(ctx context.Context, systemID string) (*BusinessOverview, error)
+}
+
+type BusinessOverview struct {
+	SystemID       string `json:"system_id"`
+	InstanceCount  int64  `json:"instance_count"`
+	TaskCount      int64  `json:"task_count"`
+	AlertCount     int64  `json:"alert_count"`
+	ZoneCount      int64  `json:"zone_count"`
+	HealthyNodes   int64  `json:"healthy_nodes"`
+	OfflineNodes   int64  `json:"offline_nodes"`
 }

@@ -81,6 +81,16 @@ const routes = [
     name: 'Credentials',
     component: () => import('@/views/credential/Index.vue'),
   },
+  {
+    path: '/alert-events',
+    name: 'AlertEvents',
+    component: () => import('@/views/alert-event/Index.vue'),
+  },
+  {
+    path: '/zone-coordinators',
+    name: 'ZoneCoordinators',
+    component: () => import('@/views/coordinator/Index.vue'),
+  },
 ]
 
 const router = createRouter({

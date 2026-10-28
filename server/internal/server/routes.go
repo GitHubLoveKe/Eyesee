@@ -75,6 +75,28 @@ func (s *Server) registerRoutes(r chi.Router) {
 	sdSvc := service.NewServiceDiscoveryService(ctRepo, instRepo)
 	sdHandler := handler.NewServiceDiscoveryHandler(sdSvc)
 
+	eventRepo := postgres.NewAlertEventRepo(s.pool)
+	ackRepo := postgres.NewAlertAckRepo(s.pool)
+	silenceRepo := postgres.NewAlertSilenceRepo(s.pool)
+	acSvc := service.NewAlertConvergenceService(eventRepo, ackRepo, silenceRepo)
+	acHandler := handler.NewAlertConvergenceHandler(acSvc)
+
+	untRepo := postgres.NewUserNotificationTargetRepo(s.pool)
+	uaSvc := service.NewUserAuthService(userRepo, untRepo)
+	uaHandler := handler.NewUserAuthHandler(uaSvc)
+
+	zcRepo := postgres.NewZoneCoordinatorRepo(s.pool)
+	zcSvc := service.NewZoneCoordinatorService(zcRepo)
+	zcHandler := handler.NewZoneCoordinatorHandler(zcSvc)
+
+	sdcRepo := postgres.NewServiceDiscoveryConfigRepo(s.pool)
+	sdcSvc := service.NewServiceDiscoveryConfigService(sdcRepo)
+	sdcHandler := handler.NewServiceDiscoveryConfigHandler(sdcSvc)
+
+	boRepo := postgres.NewBusinessOverviewRepo(s.pool)
+	boSvc := service.NewBusinessOverviewService(boRepo)
+	boHandler := handler.NewBusinessOverviewHandler(boSvc)
+
 	r.Mount("/business-systems", bsHandler.Routes())
 	r.Mount("/zones", zoneHandler.Routes())
 	r.Mount("/resource-types", rtHandler.Routes())
@@ -92,4 +114,10 @@ func (s *Server) registerRoutes(r chi.Router) {
 	r.Mount("/metric-definitions", mdHandler.Routes())
 	r.Mount("/credentials", credHandler.Routes())
 	r.Mount("/service-discovery", sdHandler.Routes())
+	r.Mount("/alert-events", acHandler.EventRoutes())
+	r.Mount("/alert-silences", acHandler.SilenceRoutes())
+	r.Mount("/user-auth", uaHandler.Routes())
+	r.Mount("/zone-coordinators", zcHandler.Routes())
+	r.Mount("/sd-configs", sdcHandler.Routes())
+	r.Mount("/business-overview", boHandler.Routes())
 }

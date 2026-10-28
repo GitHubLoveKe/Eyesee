@@ -306,3 +306,85 @@ type Credential struct {
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
+
+type AlertEvent struct {
+	EventID     int64      `json:"event_id" db:"event_id"`
+	AlertName   string     `json:"alert_name" db:"alert_name"`
+	ZoneID      *string    `json:"zone_id" db:"zone_id"`
+	InstanceID  *string    `json:"instance_id" db:"instance_id"`
+	Severity    *string    `json:"severity" db:"severity"`
+	Status      *string    `json:"status" db:"status"`
+	Labels      string     `json:"labels" db:"labels"`
+	Annotations string     `json:"annotations" db:"annotations"`
+	StartsAt    *time.Time `json:"starts_at" db:"starts_at"`
+	EndsAt      *time.Time `json:"ends_at" db:"ends_at"`
+	Fingerprint *string    `json:"fingerprint" db:"fingerprint"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+}
+
+type AlertAcknowledgement struct {
+	ID             int64     `json:"id" db:"id"`
+	EventID        int64     `json:"event_id" db:"event_id"`
+	UserID         string    `json:"user_id" db:"user_id"`
+	Note           string    `json:"note" db:"note"`
+	AcknowledgedAt time.Time `json:"acknowledged_at" db:"acknowledged_at"`
+}
+
+type AlertSilence struct {
+	SilenceID       string    `json:"silence_id" db:"silence_id"`
+	ZoneID          *string   `json:"zone_id" db:"zone_id"`
+	Matchers        string    `json:"matchers" db:"matchers"`
+	StartsAt        time.Time `json:"starts_at" db:"starts_at"`
+	EndsAt          time.Time `json:"ends_at" db:"ends_at"`
+	Duration        *string   `json:"duration" db:"duration"`
+	Reason          string    `json:"reason" db:"reason"`
+	CreatedBy       string    `json:"created_by" db:"created_by"`
+	Status          string    `json:"status" db:"status"`
+	EngineSilenceID *string   `json:"engine_silence_id" db:"engine_silence_id"`
+	CreatedAt       time.Time `json:"created_at" db:"created_at"`
+}
+
+type UserNotificationTarget struct {
+	ID          int64     `json:"id" db:"id"`
+	UserID      string    `json:"user_id" db:"user_id"`
+	ChannelType string    `json:"channel_type" db:"channel_type"`
+	TargetValue string    `json:"target_value" db:"target_value"`
+	IsPrimary   bool      `json:"is_primary" db:"is_primary"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+type ZoneCoordinator struct {
+	CoordinatorID string     `json:"coordinator_id" db:"coordinator_id"`
+	ZoneID        string     `json:"zone_id" db:"zone_id"`
+	Name          string     `json:"name" db:"name"`
+	Address       string     `json:"address" db:"address"`
+	GossipAddr    string     `json:"gossip_addr" db:"gossip_addr"`
+	Role          string     `json:"role" db:"role"`
+	ManagedNodes  int        `json:"managed_nodes" db:"managed_nodes"`
+	Status        string     `json:"status" db:"status"`
+	LastHeartbeat *time.Time `json:"last_heartbeat" db:"last_heartbeat"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+type ServiceDiscovery struct {
+	DiscoveryID     string     `json:"discovery_id" db:"discovery_id"`
+	ZoneID          string     `json:"zone_id" db:"zone_id"`
+	Name            string     `json:"name" db:"name"`
+	Protocol        string     `json:"protocol" db:"protocol"`
+	Config          string     `json:"config" db:"config"`
+	RefreshInterval string     `json:"refresh_interval" db:"refresh_interval"`
+	Enabled         bool       `json:"enabled" db:"enabled"`
+	Status          string     `json:"status" db:"status"`
+	LastRefreshAt   *time.Time `json:"last_refresh_at" db:"last_refresh_at"`
+	DiscoveredCount int        `json:"discovered_count" db:"discovered_count"`
+	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+type ResourceTypeMetric struct {
+	ID        int64     `json:"id" db:"id"`
+	TypeID    string    `json:"type_id" db:"type_id"`
+	MetricID  string    `json:"metric_id" db:"metric_id"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
