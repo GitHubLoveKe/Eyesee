@@ -189,3 +189,63 @@ type ScheduledTaskFilter struct {
 	Offset   int
 	Limit    int
 }
+
+type RCTaskRepo interface {
+	Create(ctx context.Context, t *model.RCTask) error
+	GetByID(ctx context.Context, id string) (*model.RCTask, error)
+	List(ctx context.Context, filter RCTaskFilter) ([]*model.RCTask, int64, error)
+	Update(ctx context.Context, t *model.RCTask) error
+	Delete(ctx context.Context, id string) error
+
+	CreateRule(ctx context.Context, r *model.RCRule) error
+	GetRuleByID(ctx context.Context, id string) (*model.RCRule, error)
+	ListRules(ctx context.Context, taskID string) ([]*model.RCRule, error)
+	UpdateRule(ctx context.Context, r *model.RCRule) error
+	DeleteRule(ctx context.Context, id string) error
+}
+
+type RCTaskFilter struct {
+	ZoneID  string
+	Enabled *bool
+	Keyword string
+	Offset  int
+	Limit   int
+}
+
+type MetricDefinitionRepo interface {
+	Create(ctx context.Context, m *model.MetricDefinition) error
+	GetByID(ctx context.Context, id string) (*model.MetricDefinition, error)
+	List(ctx context.Context, filter MetricFilter) ([]*model.MetricDefinition, int64, error)
+	Update(ctx context.Context, m *model.MetricDefinition) error
+	Delete(ctx context.Context, id string) error
+
+	CreateQuery(ctx context.Context, q *model.CommonQuery) error
+	ListQueries(ctx context.Context, metricID string) ([]*model.CommonQuery, error)
+	DeleteQuery(ctx context.Context, id string) error
+}
+
+type MetricFilter struct {
+	Category   string
+	MetricType string
+	Keyword    string
+	Offset     int
+	Limit      int
+}
+
+type CredentialRepo interface {
+	Create(ctx context.Context, c *model.Credential) error
+	GetByID(ctx context.Context, id string) (*model.Credential, error)
+	List(ctx context.Context, zoneID, credType string) ([]*model.Credential, error)
+	Update(ctx context.Context, c *model.Credential) error
+	Delete(ctx context.Context, id string) error
+	HasInstances(ctx context.Context, id string) (bool, error)
+}
+
+type RCWorkerRepo interface {
+	Create(ctx context.Context, w *model.RCWorker) error
+	GetByID(ctx context.Context, id string) (*model.RCWorker, error)
+	List(ctx context.Context, zoneID string) ([]*model.RCWorker, error)
+	Update(ctx context.Context, w *model.RCWorker) error
+	Delete(ctx context.Context, id string) error
+	UpdateHeartbeat(ctx context.Context, id string) error
+}

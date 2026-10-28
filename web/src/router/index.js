@@ -66,6 +66,21 @@ const routes = [
     name: 'ScheduledTasks',
     component: () => import('@/views/scheduled-task/Index.vue'),
   },
+  {
+    path: '/rc-tasks',
+    name: 'RCTasks',
+    component: () => import('@/views/rc-task/Index.vue'),
+  },
+  {
+    path: '/metric-definitions',
+    name: 'MetricDefinitions',
+    component: () => import('@/views/metric/Index.vue'),
+  },
+  {
+    path: '/credentials',
+    name: 'Credentials',
+    component: () => import('@/views/credential/Index.vue'),
+  },
 ]
 
 const router = createRouter({

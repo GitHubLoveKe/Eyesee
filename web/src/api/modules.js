@@ -120,3 +120,34 @@ export const scheduledTaskApi = {
   disable: (id) => api.post(`/scheduled-tasks/${id}/disable`),
   listExecutions: (id, params) => api.get(`/scheduled-tasks/${id}/executions`, { params }),
 }
+
+export const rcTaskApi = {
+  list: (params) => api.get('/rc-tasks', { params }),
+  get: (id) => api.get(`/rc-tasks/${id}`),
+  create: (data) => api.post('/rc-tasks', data),
+  update: (id, data) => api.put(`/rc-tasks/${id}`, data),
+  delete: (id) => api.delete(`/rc-tasks/${id}`),
+  listRules: (id) => api.get(`/rc-tasks/${id}/rules`),
+  createRule: (id, data) => api.post(`/rc-tasks/${id}/rules`, data),
+  updateRule: (ruleId, data) => api.put(`/rc-tasks/rules/${ruleId}`, data),
+  deleteRule: (ruleId) => api.delete(`/rc-tasks/rules/${ruleId}`),
+}
+
+export const metricDefinitionApi = {
+  list: (params) => api.get('/metric-definitions', { params }),
+  get: (id) => api.get(`/metric-definitions/${id}`),
+  create: (data) => api.post('/metric-definitions', data),
+  update: (id, data) => api.put(`/metric-definitions/${id}`, data),
+  delete: (id) => api.delete(`/metric-definitions/${id}`),
+  listQueries: (id) => api.get(`/metric-definitions/${id}/queries`),
+  createQuery: (id, data) => api.post(`/metric-definitions/${id}/queries`, data),
+  deleteQuery: (queryId) => api.delete(`/metric-definitions/queries/${queryId}`),
+}
+
+export const credentialApi = {
+  list: (params) => api.get('/credentials', { params }),
+  get: (id) => api.get(`/credentials/${id}`),
+  create: (data) => api.post('/credentials', data),
+  update: (id, data) => api.put(`/credentials/${id}`, data),
+  delete: (id) => api.delete(`/credentials/${id}`),
+}

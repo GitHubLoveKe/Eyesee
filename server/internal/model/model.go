@@ -227,3 +227,82 @@ type AlertStrategyInstance struct {
 	ZoneID      string    `json:"zone_id" db:"zone_id"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
+
+type RCTask struct {
+	TaskID        string    `json:"task_id" db:"task_id"`
+	ZoneID        string    `json:"zone_id" db:"zone_id"`
+	Name          string    `json:"name" db:"name"`
+	Description   string    `json:"description" db:"description"`
+	StrategyID    *string   `json:"strategy_id" db:"strategy_id"`
+	QueryAddress  *string   `json:"query_address" db:"query_address"`
+	Enabled       bool      `json:"enabled" db:"enabled"`
+	Status        string    `json:"status" db:"status"`
+	RuleGroup     *string   `json:"rule_group" db:"rule_group"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type RCRule struct {
+	RuleID       string    `json:"rule_id" db:"rule_id"`
+	TaskID       string    `json:"task_id" db:"task_id"`
+	Module       string    `json:"module" db:"module"`
+	AlertName    string    `json:"alert_name" db:"alert_name"`
+	Expr         string    `json:"expr" db:"expr"`
+	Duration     string    `json:"duration" db:"duration"`
+	Severity     string    `json:"severity" db:"severity"`
+	Labels       string    `json:"labels" db:"labels"`
+	Annotations  string    `json:"annotations" db:"annotations"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+}
+
+type RCWorker struct {
+	WorkerID      string     `json:"worker_id" db:"worker_id"`
+	ZoneID        string     `json:"zone_id" db:"zone_id"`
+	Name          string     `json:"name" db:"name"`
+	Address       string     `json:"address" db:"address"`
+	QueryAddress  string     `json:"query_address" db:"query_address"`
+	Capacity      int        `json:"capacity" db:"capacity"`
+	OwnedRules    int        `json:"owned_rules" db:"owned_rules"`
+	Status        string     `json:"status" db:"status"`
+	LastHeartbeat *time.Time `json:"last_heartbeat" db:"last_heartbeat"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+type MetricDefinition struct {
+	MetricID       string    `json:"metric_id" db:"metric_id"`
+	Name           string    `json:"name" db:"name"`
+	Category       string    `json:"category" db:"category"`
+	MetricType     *string   `json:"metric_type" db:"metric_type"`
+	Help           *string   `json:"help" db:"help"`
+	Unit           *string   `json:"unit" db:"unit"`
+	PromqlTemplate *string   `json:"promql_template" db:"promql_template"`
+	Variables      *string   `json:"variables" db:"variables"`
+	Labels         *string   `json:"labels" db:"labels"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type CommonQuery struct {
+	QueryID     string    `json:"query_id" db:"query_id"`
+	Name        string    `json:"name" db:"name"`
+	Description *string   `json:"description" db:"description"`
+	MetricID    string    `json:"metric_id" db:"metric_id"`
+	Promql      string    `json:"promql" db:"promql"`
+	Variables   *string   `json:"variables" db:"variables"`
+	Category    *string   `json:"category" db:"category"`
+	IsBuiltin   bool      `json:"is_builtin" db:"is_builtin"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+type Credential struct {
+	CredentialID  string     `json:"credential_id" db:"credential_id"`
+	ZoneID        string     `json:"zone_id" db:"zone_id"`
+	Name          string     `json:"name" db:"name"`
+	CredType      string     `json:"cred_type" db:"cred_type"`
+	EncryptedData string     `json:"-" db:"encrypted_data"`
+	Version       int        `json:"version" db:"version"`
+	ExpiresAt     *time.Time `json:"expires_at" db:"expires_at"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+}

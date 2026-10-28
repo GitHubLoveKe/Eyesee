@@ -60,6 +60,21 @@ func (s *Server) registerRoutes(r chi.Router) {
 	stSvc := service.NewScheduledTaskService(stRepo)
 	stHandler := handler.NewScheduledTaskHandler(stSvc)
 
+	rcRepo := postgres.NewRCTaskRepo(s.pool)
+	rcSvc := service.NewRCTaskService(rcRepo)
+	rcHandler := handler.NewRCTaskHandler(rcSvc)
+
+	mdRepo := postgres.NewMetricDefinitionRepo(s.pool)
+	mdSvc := service.NewMetricDefinitionService(mdRepo)
+	mdHandler := handler.NewMetricDefinitionHandler(mdSvc)
+
+	credRepo := postgres.NewCredentialRepo(s.pool)
+	credSvc := service.NewCredentialService(credRepo)
+	credHandler := handler.NewCredentialHandler(credSvc)
+
+	sdSvc := service.NewServiceDiscoveryService(ctRepo, instRepo)
+	sdHandler := handler.NewServiceDiscoveryHandler(sdSvc)
+
 	r.Mount("/business-systems", bsHandler.Routes())
 	r.Mount("/zones", zoneHandler.Routes())
 	r.Mount("/resource-types", rtHandler.Routes())
@@ -73,4 +88,8 @@ func (s *Server) registerRoutes(r chi.Router) {
 	r.Mount("/alert-groups", agHandler.Routes())
 	r.Mount("/alert-strategies", asHandler.Routes())
 	r.Mount("/scheduled-tasks", stHandler.Routes())
+	r.Mount("/rc-tasks", rcHandler.Routes())
+	r.Mount("/metric-definitions", mdHandler.Routes())
+	r.Mount("/credentials", credHandler.Routes())
+	r.Mount("/service-discovery", sdHandler.Routes())
 }

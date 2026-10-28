@@ -26,6 +26,7 @@
           <el-menu-item index="/zones">网区管理</el-menu-item>
           <el-menu-item index="/resource-types">资源类型</el-menu-item>
           <el-menu-item index="/instances">实例管理</el-menu-item>
+          <el-menu-item index="/metric-definitions">指标管理</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="task">
           <template #title>
@@ -33,6 +34,7 @@
             <span>任务管理</span>
           </template>
           <el-menu-item index="/collection-tasks">采集任务</el-menu-item>
+          <el-menu-item index="/rc-tasks">RC任务</el-menu-item>
           <el-menu-item index="/scheduled-tasks">定时任务</el-menu-item>
           <el-menu-item index="/data-sinks">数据存储</el-menu-item>
         </el-sub-menu>
@@ -51,6 +53,7 @@
             <span>基础设施</span>
           </template>
           <el-menu-item index="/collectors">采集器管理</el-menu-item>
+          <el-menu-item index="/credentials">凭据管理</el-menu-item>
           <el-menu-item index="/users">用户管理</el-menu-item>
         </el-sub-menu>
       </el-menu>
@@ -58,7 +61,7 @@
     <el-container>
       <el-header class="app-header">
         <div class="header-right">
-          <el-tag type="success">Phase 2</el-tag>
+          <el-tag type="success">Phase 3</el-tag>
           <el-dropdown>
             <span class="user-info">admin</span>
             <template #dropdown>
