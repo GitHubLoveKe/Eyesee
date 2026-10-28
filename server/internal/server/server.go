@@ -60,6 +60,7 @@ func (s *Server) setupRouter() {
 	r.Use(chimw.Recoverer)
 	r.Use(middleware.Logging(s.logger))
 	r.Use(middleware.CORS(middleware.DefaultCORSConfig()))
+	r.Use(chimw.RequestSize(10 << 20)) // 10MB request body limit
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		response.OK(w, map[string]string{"status": "ok"})

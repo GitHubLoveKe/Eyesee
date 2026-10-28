@@ -184,6 +184,14 @@ func (h *CollectionTaskHandler) BatchEnable(w http.ResponseWriter, r *http.Reque
 		response.BadRequest(w, "invalid request body")
 		return
 	}
+	if len(req.IDs) == 0 {
+		response.BadRequest(w, "ids array cannot be empty")
+		return
+	}
+	if len(req.IDs) > 100 {
+		response.BadRequest(w, "batch size cannot exceed 100")
+		return
+	}
 	var succeeded, failed int
 	for _, id := range req.IDs {
 		if err := h.svc.Enable(r.Context(), id); err != nil {
@@ -203,6 +211,14 @@ func (h *CollectionTaskHandler) BatchDisable(w http.ResponseWriter, r *http.Requ
 		response.BadRequest(w, "invalid request body")
 		return
 	}
+	if len(req.IDs) == 0 {
+		response.BadRequest(w, "ids array cannot be empty")
+		return
+	}
+	if len(req.IDs) > 100 {
+		response.BadRequest(w, "batch size cannot exceed 100")
+		return
+	}
 	var succeeded, failed int
 	for _, id := range req.IDs {
 		if err := h.svc.Disable(r.Context(), id); err != nil {
@@ -220,6 +236,14 @@ func (h *CollectionTaskHandler) BatchDelete(w http.ResponseWriter, r *http.Reque
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "invalid request body")
+		return
+	}
+	if len(req.IDs) == 0 {
+		response.BadRequest(w, "ids array cannot be empty")
+		return
+	}
+	if len(req.IDs) > 100 {
+		response.BadRequest(w, "batch size cannot exceed 100")
 		return
 	}
 	var succeeded, failed int

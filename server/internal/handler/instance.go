@@ -214,6 +214,14 @@ func (h *InstanceHandler) BatchImport(w http.ResponseWriter, r *http.Request) {
 		response.BadRequest(w, "invalid request body")
 		return
 	}
+	if len(req.Instances) == 0 {
+		response.BadRequest(w, "instances array cannot be empty")
+		return
+	}
+	if len(req.Instances) > 100 {
+		response.BadRequest(w, "batch size cannot exceed 100")
+		return
+	}
 
 	var created []*model.Instance
 	var errors []string
