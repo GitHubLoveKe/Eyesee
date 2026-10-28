@@ -12,12 +12,14 @@ import (
 )
 
 type Config struct {
-	ZoneID       string           `yaml:"zone_id"`
-	Server       ServerConfig     `yaml:"server"`
-	Gossip       GossipConfig     `yaml:"gossip"`
-	Management   ManagementConfig `yaml:"management"`
-	Health       HealthConfig     `yaml:"health"`
-	Distribution DistConfig       `yaml:"distribution"`
+	ZoneID         string                 `yaml:"zone_id"`
+	EnabledModules []string               `yaml:"enabled_modules"`
+	Server         ServerConfig           `yaml:"server"`
+	Gossip         GossipConfig           `yaml:"gossip"`
+	Management     ManagementConfig       `yaml:"management"`
+	Health         HealthConfig           `yaml:"health"`
+	Distribution   DistConfig             `yaml:"distribution"`
+	ModuleConfigs  map[string]interface{} `yaml:"-"`
 }
 
 type ServerConfig struct {
@@ -95,6 +97,20 @@ func (c *Config) HashPartitions() int {
 	return c.Distribution.HashPartitions
 }
 
+// ModuleConfig 将模块的原始配置段解码到目标 struct。
+// 若该模块无配置段则不操作（模块使用默认值）。
+func (c *Config) ModuleConfig(name string, target interface{}) error {
+	raw, ok := c.ModuleConfigs[name]
+	if !ok {
+		return nil
+	}
+	data, err := yaml.Marshal(raw)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, target)
+}
+
 func (c *Config) Validate() error {
 	if c.ZoneID == "" {
 		return fmt.Errorf("zone_id 不能为空")
@@ -137,13 +153,32 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+
 	if cfg.Gossip.NodeName == "" {
 		cfg.Gossip.NodeName = "coordinator-" + cfg.ZoneID
 	}
+
+	if len(cfg.EnabledModules) == 0 {
+		cfg.EnabledModules = []string{"metrics"}
+	}
+
+	cfg.ModuleConfigs = make(map[string]interface{})
+	for _, name := range cfg.EnabledModules {
+		if section, ok := raw[name]; ok {
+			cfg.ModuleConfigs[name] = section
+		}
+	}
+
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("配置校验失败: %w", err)
 	}

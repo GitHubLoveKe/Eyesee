@@ -1,5 +1,8 @@
 zone_id: "zone-east-1"
 
+enabled_modules:
+  - metrics
+
 server:
   http_addr: ":8080"
 

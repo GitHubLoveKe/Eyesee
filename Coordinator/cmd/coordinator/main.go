@@ -11,6 +11,12 @@ import (
 
 	"coordinator/config"
 	zc "coordinator"
+
+	// 模块自注册（init 顺序无关，由 enabled_modules 控制实际加载）
+	_ "coordinator/module/logs"
+	_ "coordinator/module/metrics"
+	_ "coordinator/module/network"
+	_ "coordinator/module/traces"
 )
 
 func main() {

@@ -12,8 +12,6 @@ import (
 
 	"coordinator/config"
 	"coordinator/model"
-
-	"gopkg.in/yaml.v3"
 )
 
 type Ring struct {
@@ -61,61 +59,82 @@ func (r *Ring) Size() int {
 	return len(r.nodes) / max(r.partitions, 1)
 }
 
+// ModuleRoute 模块路由表条目：由 Coordinator 从各 Module.Routes() 聚合后传入。
+type ModuleRoute struct {
+	ModuleName string
+	Routes     []TaskRoute
+}
+
+// TaskRoute 单条路由规则，对应 module.TaskRoute。
+type TaskRoute struct {
+	WorkerType model.WorkerType
+	TaskFilter func(*model.CollectionTask) bool
+	RuleFilter func(*model.AlertRule) bool
+}
+
 type Distributor struct {
 	store  *model.Store
 	cfg    *config.Config
-	ring   *Ring // 保留用于兼容，实际使用下面两个专用 ring
-	vmagentRing  *Ring
-	vmalertRing  *Ring
 	logger *slog.Logger
 
-	mu       sync.RWMutex
-	plan     *model.AssignmentPlan
-	version  atomic.Int64
-	onChange func()
+	mu           sync.RWMutex
+	rings        map[model.WorkerType]*Ring
+	plan         *model.AssignmentPlan
+	version      atomic.Int64
+	onChange     func()
+	moduleRoutes []ModuleRoute
 }
 
 func NewDistributor(store *model.Store, cfg *config.Config, logger *slog.Logger) *Distributor {
-	partitions := cfg.HashPartitions()
-	d := &Distributor{
-		store:       store,
-		cfg:         cfg,
-		ring:        NewRing(partitions),
-		vmagentRing: NewRing(partitions),
-		vmalertRing: NewRing(partitions),
-		logger:      logger.With("component", "distributor"),
+	return &Distributor{
+		store:  store,
+		cfg:    cfg,
+		rings:  make(map[model.WorkerType]*Ring),
+		logger: logger.With("component", "distributor"),
 		plan: &model.AssignmentPlan{
 			ZoneID:      cfg.ZoneID,
 			Assignments: make(map[string]*model.Assignment),
 		},
 	}
-	return d
 }
 
 func (d *Distributor) SetOnChange(fn func()) {
 	d.onChange = fn
 }
 
+// SetModuleRoutes 设置模块路由表。由 Coordinator 在所有模块 Init 后调用。
+func (d *Distributor) SetModuleRoutes(routes []ModuleRoute) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.moduleRoutes = routes
+}
+
 func (d *Distributor) Rebalance() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	vmagentWorkers := d.store.GetHealthyWorkers(model.WorkerVMAgent)
-	vmalertWorkers := d.store.GetHealthyWorkers(model.WorkerVMAlert)
-
-	// 为 vmagent 和 vmalert 分别构建独立的哈希环
-	vmagentIDs := make([]string, 0, len(vmagentWorkers))
-	for _, w := range vmagentWorkers {
-		vmagentIDs = append(vmagentIDs, w.ID)
+	// 1. 收集所有模块声明的唯一 WorkerType 集合
+	workerTypeSet := make(map[model.WorkerType]struct{})
+	for _, mr := range d.moduleRoutes {
+		for _, r := range mr.Routes {
+			workerTypeSet[r.WorkerType] = struct{}{}
+		}
 	}
-	d.vmagentRing.Build(vmagentIDs)
 
-	vmalertIDs := make([]string, 0, len(vmalertWorkers))
-	for _, w := range vmalertWorkers {
-		vmalertIDs = append(vmalertIDs, w.ID)
+	// 2. 为每个 WorkerType 构建哈希环
+	d.rings = make(map[model.WorkerType]*Ring, len(workerTypeSet))
+	for wt := range workerTypeSet {
+		workers := d.store.GetHealthyWorkers(wt)
+		ids := make([]string, 0, len(workers))
+		for _, w := range workers {
+			ids = append(ids, w.ID)
+		}
+		ring := NewRing(d.cfg.HashPartitions())
+		ring.Build(ids)
+		d.rings[wt] = ring
 	}
-	d.vmalertRing.Build(vmalertIDs)
 
+	// 3. 构建分配表
 	newPlan := &model.AssignmentPlan{
 		ZoneID:      d.cfg.ZoneID,
 		Assignments: make(map[string]*model.Assignment),
@@ -123,51 +142,71 @@ func (d *Distributor) Rebalance() {
 		UpdatedAt:   time.Now(),
 	}
 
-	for _, w := range vmagentWorkers {
-		newPlan.Assignments[w.ID] = &model.Assignment{WorkerID: w.ID}
-	}
-	for _, w := range vmalertWorkers {
-		newPlan.Assignments[w.ID] = &model.Assignment{WorkerID: w.ID}
-	}
-
-	// 采集任务只分配给 vmagent workers
-	tasks := d.store.GetEnabledTasks()
-	for _, task := range tasks {
-		workerID := d.vmagentRing.Get(task.TaskID)
-		if workerID == "" {
-			continue
+	// 确保所有 healthy worker 出现在分配表中
+	for wt := range workerTypeSet {
+		for _, w := range d.store.GetHealthyWorkers(wt) {
+			newPlan.Assignments[w.ID] = &model.Assignment{WorkerID: w.ID}
 		}
-		assignment, ok := newPlan.Assignments[workerID]
-		if !ok {
-			assignment = &model.Assignment{WorkerID: workerID}
-			newPlan.Assignments[workerID] = assignment
-		}
-		assignment.TaskIDs = append(assignment.TaskIDs, task.TaskID)
 	}
 
-	// 告警规则只分配给 vmalert workers
-	rules := d.store.GetAllRules()
-	for _, rule := range rules {
-		workerID := d.vmalertRing.Get(rule.RuleID)
-		if workerID == "" {
-			continue
+	// 4. 按模块路由分配 task 和 rule
+	for _, mr := range d.moduleRoutes {
+		for _, route := range mr.Routes {
+			ring := d.rings[route.WorkerType]
+			if ring == nil {
+				continue
+			}
+
+			if route.TaskFilter != nil {
+				for _, task := range d.store.GetEnabledTasks() {
+					if !route.TaskFilter(task) {
+						continue
+					}
+					workerID := ring.Get(task.TaskID)
+					if workerID == "" {
+						continue
+					}
+					a, ok := newPlan.Assignments[workerID]
+					if !ok {
+						a = &model.Assignment{WorkerID: workerID}
+						newPlan.Assignments[workerID] = a
+					}
+					a.TaskIDs = append(a.TaskIDs, task.TaskID)
+				}
+			}
+
+			if route.RuleFilter != nil {
+				for _, rule := range d.store.GetAllRules() {
+					if !route.RuleFilter(rule) {
+						continue
+					}
+					workerID := ring.Get(rule.RuleID)
+					if workerID == "" {
+						continue
+					}
+					a, ok := newPlan.Assignments[workerID]
+					if !ok {
+						a = &model.Assignment{WorkerID: workerID}
+						newPlan.Assignments[workerID] = a
+					}
+					a.RuleIDs = append(a.RuleIDs, rule.RuleID)
+				}
+			}
 		}
-		assignment, ok := newPlan.Assignments[workerID]
-		if !ok {
-			assignment = &model.Assignment{WorkerID: workerID}
-			newPlan.Assignments[workerID] = assignment
-		}
-		assignment.RuleIDs = append(assignment.RuleIDs, rule.RuleID)
 	}
 
 	d.plan = newPlan
+
+	// 日志统计
+	stats := make(map[string]int)
+	for wt := range workerTypeSet {
+		stats[string(wt)] = len(d.store.GetHealthyWorkers(wt))
+	}
 	d.logger.Info("分配表已重算",
 		"version", newPlan.Version,
 		"workers", len(newPlan.Assignments),
-		"vmagent_workers", len(vmagentWorkers),
-		"vmalert_workers", len(vmalertWorkers),
-		"tasks", len(tasks),
-		"rules", len(rules),
+		"worker_types", stats,
+		"modules", len(d.moduleRoutes),
 	)
 
 	if d.onChange != nil {
@@ -191,143 +230,9 @@ func (d *Distributor) GetPlan() *model.AssignmentPlan {
 	return d.plan
 }
 
-func (d *Distributor) GenerateScrapeConfig(workerID string) ([]byte, error) {
-	assignment := d.GetAssignment(workerID)
-	tasks := d.store.GetEnabledTasks()
-
-	taskSet := make(map[string]bool, len(assignment.TaskIDs))
-	for _, id := range assignment.TaskIDs {
-		taskSet[id] = true
-	}
-
-	var scrapeConfigs []map[string]interface{}
-	for _, task := range tasks {
-		if !taskSet[task.TaskID] {
-			continue
-		}
-		sc := d.buildScrapeConfig(task)
-		scrapeConfigs = append(scrapeConfigs, sc)
-	}
-
-	w := d.store.GetWorker(workerID)
-	if w == nil {
-		return yaml.Marshal(map[string]interface{}{"scrape_configs": scrapeConfigs})
-	}
-
-	zoneResources := d.store.GetResourcesByType(model.ResourceVM)
-	var remoteWriteURL string
-	if len(zoneResources) > 0 {
-		remoteWriteURL = zoneResources[0].Address + "/api/v1/write"
-	}
-
-	result := map[string]interface{}{
-		"scrape_configs": scrapeConfigs,
-	}
-	if remoteWriteURL != "" {
-		result["remote_write"] = []map[string]interface{}{
-			{"url": remoteWriteURL},
-		}
-	}
-
-	return yaml.Marshal(result)
-}
-
-func (d *Distributor) buildScrapeConfig(task *model.CollectionTask) map[string]interface{} {
-	sc := map[string]interface{}{
-		"job_name": task.JobName,
-	}
-
-	if task.ScrapeInterval != "" {
-		sc["scrape_interval"] = task.ScrapeInterval
-	}
-	if task.MetricsPath != "" && task.MetricsPath != "/metrics" {
-		sc["metrics_path"] = task.MetricsPath
-	}
-
-	labels := make(map[string]string)
-	for k, v := range task.Labels {
-		labels[k] = v
-	}
-	labels["zone"] = task.ZoneID
-	labels["__meta_task_id"] = task.TaskID
-
-	staticConfig := map[string]interface{}{
-		"targets": []string{task.Target},
-		"labels":  labels,
-	}
-	sc["static_configs"] = []interface{}{staticConfig}
-
-	if task.Auth != nil && task.Auth.Username != "" {
-		sc["basic_auth"] = map[string]interface{}{
-			"username": task.Auth.Username,
-			"password": task.Auth.Password,
-		}
-	}
-
-	return sc
-}
-
-func (d *Distributor) GenerateAlertRules(workerID string) ([]byte, error) {
-	assignment := d.GetAssignment(workerID)
-	allRules := d.store.GetAllRules()
-
-	ruleSet := make(map[string]bool, len(assignment.RuleIDs))
-	for _, id := range assignment.RuleIDs {
-		ruleSet[id] = true
-	}
-
-	groupMap := make(map[string][]map[string]interface{})
-
-	for _, rule := range allRules {
-		if !ruleSet[rule.RuleID] {
-			continue
-		}
-
-		groupName := rule.GroupName
-		if groupName == "" {
-			groupName = fmt.Sprintf("zone-%s-default", rule.ZoneID)
-		}
-
-		ruleDef := map[string]interface{}{
-			"alert": rule.AlertName,
-			"expr":  rule.Expr,
-		}
-		if rule.Duration != "" {
-			ruleDef["for"] = rule.Duration
-		}
-
-		allLabels := make(map[string]string)
-		allLabels["zone"] = rule.ZoneID
-		if rule.Severity != "" {
-			allLabels["severity"] = rule.Severity
-		}
-		for k, v := range rule.Labels {
-			allLabels[k] = v
-		}
-		ruleDef["labels"] = allLabels
-
-		if len(rule.Annotations) > 0 {
-			ruleDef["annotations"] = rule.Annotations
-		}
-
-		groupMap[groupName] = append(groupMap[groupName], ruleDef)
-	}
-
-	var groups []map[string]interface{}
-	for name, rules := range groupMap {
-		group := map[string]interface{}{
-			"name":  name,
-			"rules": rules,
-		}
-		groups = append(groups, group)
-	}
-
-	result := map[string]interface{}{
-		"groups": groups,
-	}
-
-	return yaml.Marshal(result)
-}
+// ---------------------------------------------------------------------------
+// SSE EventBroker
+// ---------------------------------------------------------------------------
 
 type SSEEvent struct {
 	Event string

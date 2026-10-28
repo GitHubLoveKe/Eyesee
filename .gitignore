@@ -1,1 +1,38 @@
+# Dependencies
 .qoder-credits
+.qoder/
+
+# Build output
+server/bin/
+server/tmp/
+web/dist/
+web/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+NUL
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Data (Podman volumes are external, but ignore local data dirs)
+deploy/data/
+
+# Logs
+*.log
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib

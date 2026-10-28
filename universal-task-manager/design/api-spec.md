@@ -1573,7 +1573,9 @@ POST /api/v1/collector-nodes
 }
 ```
 
-> `node_type` 可选值：`vmagent` | `alloy` | `prometheus` | `custom`
+> `node_type` 可选值：`vmagent` | `vmalert` | `otel-collector` | `exporter` | `alloy` | `prometheus` | `custom`
+> 
+> 实际可注册的 worker 类型由 Zone Coordinator 当前启用的模块动态决定。未启用对应模块时，注册该类型的 worker 将被拒绝。
 
 **响应：**
 

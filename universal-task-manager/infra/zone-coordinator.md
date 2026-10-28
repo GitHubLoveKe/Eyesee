@@ -1,15 +1,33 @@
 # Zone Coordinator 详细设计
 
-> 版本：v1.0 | 日期：2026-10-28
-> 定位：每个网区部署一个区协调器进程（可多副本 HA），负责拉取本区资源、健康检测、采集任务与告警策略的协调分发。
+> 版本：v2.0 | 日期：2026-10-28
+> 定位：每个网区部署一个区协调器进程（可多副本 HA），负责拉取本区资源、健康检测、采集任务与告警策略的协调分发。采用**可插拔模块架构**，按需启用 metrics / traces / logs / network 等功能模块。
 
 ---
 
 ## 一、概述
 
-Zone Coordinator 是协调面的核心进程，运行在每个网区内。它从管理平台拉取本区的资源清单（vmagent、vmalert、exporter、存储后端等），持续检测各组件健康状态，然后通过一致性哈希将采集任务（scrape job）和告警规则（alert rule）分发到对应的 worker 节点。
+Zone Coordinator 是协调面的核心进程，运行在每个网区内。它从管理平台拉取本区的资源清单（vmagent、vmalert、otel-collector、exporter、存储后端等），持续检测各组件健康状态，然后通过一致性哈希将采集任务（scrape job）和告警规则（alert rule）分发到对应的 worker 节点。
+
+**Coordinator 是纯路由调度面**——数据就地落盘到各网区本地存储（VictoriaMetrics / Tempo / Loki 等），不回传主区。otel-collector 直接写入本地存储，Coordinator 只负责告诉 worker「你该采集什么」。
 
 多个 Coordinator 副本在同一网区内通过 gossip 协议保持数据和任务派发的一致性，worker 从任意副本拉取到的任务分配结果相同。
+
+### 1.1 可插拔模块架构
+
+Coordinator 采用 Module 插件机制，每个功能域（metrics、traces、logs、network）实现为一个独立模块，通过 `config.yaml` 的 `enabled_modules` 控制启用：
+
+| 模块 | Worker 类型 | 职责 | 状态 |
+|------|-------------|------|------|
+| metrics | vmagent, vmalert | 指标采集 + 告警规则评估 | 已实现 |
+| traces | otel-collector | APM/Trace 数据路由 | stub |
+| logs | otel-collector | 日志数据路由 | stub |
+| network | exporter | 网络设备监控 | stub |
+
+模块通过 Go `init()` 自注册，新增模块只需：
+1. 在 `module/` 下新建包，实现 `Module` 接口
+2. `main.go` 添加 blank import
+3. `config.yaml` 的 `enabled_modules` 加入模块名
 
 ```
 管理平台 (控制面)
@@ -19,13 +37,20 @@ Zone Coordinator 是协调面的核心进程，运行在每个网区内。它从
   ▼
 Zone Coordinator × N (每区多副本, gossip 同步)
   │
+  ├── 可插拔模块层
+  │     ├── [metrics]   vmagent scrape_config + vmalert rule_groups
+  │     ├── [traces]    otel-collector pipeline config (TODO)
+  │     ├── [logs]      otel-collector pipeline config (TODO)
+  │     └── [network]   exporter config (TODO)
+  │
   ├── 资源拉取: 按 zone_id 拉取本区资源列表
   │     ├── vmagent × N (采集 worker)
   │     ├── vmalert × N (规则评估 worker)
-  │     ├── VictoriaMetrics / Prometheus (存储/查询)
-  │     ├── OpenSearch / Elasticsearch (日志存储)
+  │     ├── otel-collector × N (OTel 数据管道 worker)
+  │     ├── VictoriaMetrics / Prometheus (指标存储)
+  │     ├── Tempo / Jaeger (Trace 存储)
+  │     ├── Loki / OpenSearch (日志存储)
   │     ├── OpenObserve (可观测平台)
-  │     ├── OTel Collector (数据管道)
   │     ├── S3 (对象存储)
   │     └── Exporters (node/mysql/redis/snmp...)
   │
@@ -33,14 +58,16 @@ Zone Coordinator × N (每区多副本, gossip 同步)
   │     ├── 主动探测: GET /-/healthy (各组件 health_endpoint)
   │     └── 被动心跳: worker 定期 POST heartbeat
   │
-  ├── 任务协调分发
-  │     ├── 一致性哈希: hash(job_id) → ring → owner worker
+  ├── 任务协调分发 (动态哈希环, 按模块路由)
+  │     ├── 一致性哈希: hash(job_id) → ring[worker_type] → owner worker
   │     ├── 推送: SSE 通知 worker 任务有变更
   │     └── 拉取: worker 定期 GET 获取完整分配
   │
-  └── 任务接口 (原生协议)
-        ├── vmagent: Prometheus scrape_config (YAML) + http_sd
-        └── vmalert: Prometheus rule_groups (YAML)
+  └── 任务接口 (原生协议, 按模块分发)
+        ├── [metrics] vmagent: Prometheus scrape_config (YAML)
+        ├── [metrics] vmalert: Prometheus rule_groups (YAML)
+        ├── [traces]  otel-collector: OTel pipeline config (TODO)
+        └── [logs]    otel-collector: OTel pipeline config (TODO)
 ```
 
 ---
@@ -53,11 +80,12 @@ Zone Coordinator × N (每区多副本, gossip 同步)
 |------|------|
 | 资源拉取 | 按 zone_id 从管理平台拉取本区所有资源，按类型分组 |
 | 健康检测 | 主动探测 + 被动心跳，三态流转 (healthy/degraded/offline) |
-| 任务分配 | 一致性哈希将 collection_task / rc_rule 分配到 worker |
-| 配置生成 | 为 vmagent 生成 scrape_config YAML，为 vmalert 生成 rule_groups YAML |
+| 任务分配 | 一致性哈希将 collection_task / rc_rule 分配到 worker（动态多环，按 WorkerType 分环） |
+| 配置生成 | 由各模块的 ConfigGenerator 实现：metrics 模块生成 scrape_config / rule_groups，未来 traces/logs 模块生成 otel pipeline config |
 | 任务推送 | SSE 主动推送变更通知到 worker |
 | Gossip 同步 | 多副本间同步资源列表、分配表、健康状态 |
 | HTTP API | 供 worker 拉取任务、供管理平台推送更新 |
+| 模块管理 | 按 `enabled_modules` 配置加载/卸载功能模块，模块间互不影响 |
 
 ### 本模块不负责
 
@@ -185,19 +213,30 @@ POST {management_url}/api/v1/zones/{zone_id}/health-report
 
 ### 3.3 任务协调分发
 
-#### 3.3.1 一致性哈希分配
+#### 3.3.1 一致性哈希分配（动态多环）
 
-所有 worker (vmagent/vmalert) 注册到一致性哈希环上。每个 job (collection_task / rc_rule) 通过 `hash(job_id)` 定位到环上的 owner worker。
+Coordinator 为每种 WorkerType 维护一个独立的一致性哈希环。模块通过 `Routes()` 声明使用哪些 WorkerType，Distributor 据此构建环并分配任务。
 
 ```
-一致性哈希环 (160 虚拟节点/worker)
+动态哈希环 (160 虚拟节点/worker, 按 WorkerType 分环)
 
-         hash(task-001) → slot 42 → vmagent-01
-         hash(task-002) → slot 87 → vmagent-02
-         hash(task-003) → slot 15 → vmagent-01
-         hash(rule-001) → slot 103 → vmalert-01
-         hash(rule-002) → slot 61 → vmalert-02
+Ring[vmagent]:
+  hash(task-001) → slot 42 → vmagent-01     (module=metrics)
+  hash(task-002) → slot 87 → vmagent-02     (module=metrics)
+
+Ring[vmalert]:
+  hash(rule-001) → slot 103 → vmalert-01    (module=metrics)
+  hash(rule-002) → slot 61  → vmalert-02    (module=metrics)
+
+Ring[otel-collector]:
+  hash(task-010) → slot 23 → otel-01        (module=traces)
+  hash(task-011) → slot 55 → otel-02        (module=logs)
+
+Ring[exporter]:
+  hash(task-020) → slot 77 → exporter-01    (module=network)
 ```
+
+任务通过 `module` 字段路由到对应模块的 WorkerType 环上。`module` 为空的任务默认归属 `metrics` 模块（向后兼容）。
 
 **分配特性：**
 
@@ -359,12 +398,15 @@ vmalert 通过 `GET /-/reload` 热加载新规则。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/v1/workers/register` | Worker 注册到 Coordinator |
+| POST | `/api/v1/workers/register` | Worker 注册到 Coordinator（worker_type 由启用模块动态校验） |
 | POST | `/api/v1/workers/{id}/heartbeat` | Worker 心跳上报 |
 | GET | `/api/v1/workers/{id}/assignments` | 拉取任务分配 (JSON) |
-| GET | `/api/v1/workers/{id}/scrape-config` | vmagent 拉取 scrape_config (YAML) |
-| GET | `/api/v1/workers/{id}/rules` | vmalert 拉取 rule_groups (YAML) |
+| GET | `/api/v1/workers/{id}/config` | 通用配置拉取（由 worker 类型对应的模块 ConfigGenerator 生成） |
+| GET | `/api/v1/workers/{id}/scrape-config` | [兼容] vmagent 拉取 scrape_config (YAML) |
+| GET | `/api/v1/workers/{id}/rules` | [兼容] vmalert 拉取 rule_groups (YAML) |
 | GET | `/api/v1/stream/assignments` | SSE 订阅变更推送 |
+
+> `/config` 是通用端点，根据 worker 类型自动分发到对应模块的配置生成器。旧端点 `/scrape-config` 和 `/rules` 保持向后兼容。
 
 ### 4.2 管理平台端 API
 
@@ -382,6 +424,13 @@ vmalert 通过 `GET /-/reload` 热加载新规则。
 
 ```yaml
 zone_id: "zone-east-1"
+
+# 启用的功能模块（按需插拔）
+enabled_modules:
+  - metrics      # 指标采集 (vmagent + vmalert)
+  # - traces     # APM/Trace (otel-collector)
+  # - logs       # 日志 (otel-collector)
+  # - network    # 网络设备监控 (exporter)
 
 server:
   http_addr: ":8080"
@@ -407,6 +456,14 @@ health:
 distribution:
   hash_partitions: 160
   rebalance_debounce: "5s"
+
+# 模块专属配置段（仅启用的模块才解析）
+# metrics:
+#   remote_write_url: "http://vmstorage:8428/api/v1/write"
+# traces:
+#   otlp_grpc_port: 4317
+# logs:
+#   loki_url: "http://loki:3100"
 ```
 
 ---
@@ -427,9 +484,17 @@ distribution:
 ┌─────────────────────────────────────────────────────────────────────┐
 │                  Zone Coordinator (区协调器)                         │
 │                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                   可插拔模块层                                  │  │
+│  │  [metrics]  [traces]  [logs]  [network]                      │  │
+│  │     │          │         │        │                           │  │
+│  │     └──────────┴─────────┴────────┘                           │  │
+│  │                │ 声明 WorkerType + TaskFilter                   │  │
+│  └────────────────┼──────────────────────────────────────────────┘  │
+│                   ▼                                                 │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
 │  │ 资源拉取  │→│ 健康检测  │→│ 分配计算  │→│ 配置生成  │          │
-│  │ (pull)   │  │ (probe)  │  │ (hash)   │  │ (render) │          │
+│  │ (pull)   │  │ (probe)  │  │ (hash)   │  │ (module) │          │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘          │
 │       ↑                            │              │                │
 │       │  gossip 同步               │              │                │
@@ -442,16 +507,27 @@ distribution:
 └───────┼───────────────────────────────────────────┼────────────────┘
         │                                           │
         ▼                                           ▼
-┌───────────────────┐                    ┌───────────────────┐
-│   Coordinator Peer │                    │    Worker Nodes    │
-│   (gossip 同步)    │                    │                    │
-└───────────────────┘                    │  vmagent × N       │
-                                         │    ← scrape_config │
-                                         │                    │
-                                         │  vmalert × N       │
-                                         │    ← rule_groups   │
-                                         └───────────────────┘
+┌───────────────────┐                    ┌───────────────────────────┐
+│   Coordinator Peer │                    │      Worker Nodes          │
+│   (gossip 同步)    │                    │                            │
+└───────────────────┘                    │  [metrics]                 │
+                                         │    vmagent × N ← scrape_config│
+                                         │    vmalert × N ← rule_groups │
+                                         │                            │
+                                         │  [traces]                  │
+                                         │    otel-collector × N      │
+                                         │      → Tempo (本地存储)     │
+                                         │                            │
+                                         │  [logs]                    │
+                                         │    otel-collector × N      │
+                                         │      → Loki (本地存储)      │
+                                         │                            │
+                                         │  [network]                 │
+                                         │    exporter × N            │
+                                         └───────────────────────────┘
 ```
+
+> **数据就地落盘**：各网区 worker 直接将数据写入本地存储（VictoriaMetrics / Tempo / Loki），不经过 Coordinator 转发。Coordinator 只做路由调度。
 
 ---
 
@@ -489,3 +565,47 @@ distribution:
 - 纯推送模式下 Coordinator 重启后需要管理平台重新推送全量。
 - 拉取模式保证 Coordinator 启动时能自行恢复完整状态。
 - 推送作为加速通道，减少拉取延迟。
+
+### DEC-ZC-05: 可插拔模块架构
+
+**决策：** 每个功能域（metrics/traces/logs/network）实现为独立 Module，通过 `init()` 自注册 + `enabled_modules` 配置控制启用。Coordinator 核心（gossip/health/distributor/api）保持通用，不感知具体模块。
+
+**理由：**
+- 新功能上线只需新增模块包，不改核心代码。
+- 各网区按需启用模块，避免不必要的资源消耗。
+- 模块间松耦合：traces 模块故障不影响 metrics 模块运行。
+
+**Module 接口：**
+
+```go
+type Module interface {
+    Name() string
+    Init(ctx ModuleContext) error
+    Start(ctx context.Context) error
+    Stop(ctx context.Context) error
+    Routes() []TaskRoute  // 声明 WorkerType + TaskFilter/RuleFilter
+}
+```
+
+**可选接口：**
+- `ConfigGenerator` — 为 worker 生成下发配置（如 metrics 模块生成 scrape_config YAML）
+- `RouteRegistrar` — 注册自定义 HTTP API 路由
+
+### DEC-ZC-06: 数据就地落盘，Coordinator 纯路由
+
+**决策：** Coordinator 只做任务路由调度，不接触、不转发、不缓存观测数据。各网区 worker（vmagent / otel-collector）直接将数据写入本地存储。
+
+**理由：**
+- 数据不过 Coordinator，消除单点瓶颈和带宽压力。
+- 各网区数据主权独立，满足数据合规要求。
+- Coordinator 故障不影响已有数据管道运行。
+- 未来流量波动大时，可在 worker → storage 之间插入 Kafka 中转，Coordinator 架构不变。
+
+### DEC-ZC-07: 动态哈希环，按 WorkerType 分环
+
+**决策：** Distributor 维护 `map[WorkerType]*Ring`，而非硬编码 vmagentRing/vmalertRing。每种 WorkerType 一个独立环，模块通过 `Routes()` 声明使用哪些环。
+
+**理由：**
+- 新增 WorkerType（如 otel-collector）无需修改 Distributor 代码。
+- 多模块共享 WorkerType（如 traces + logs 都用 otel-collector）时共用一个环，任务按模块过滤独立分配。
+- 保持确定性：相同输入 → 相同分配结果，多副本天然一致。

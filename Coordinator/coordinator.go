@@ -16,6 +16,7 @@ import (
 	"coordinator/gossip"
 	"coordinator/health"
 	"coordinator/model"
+	"coordinator/module"
 )
 
 type Coordinator struct {
@@ -28,29 +29,55 @@ type Coordinator struct {
 	apiServer   *api.Server
 	logger      *slog.Logger
 	httpClient  *http.Client
+
+	activeModules []module.Module
 }
 
 func New(cfg *config.Config, logger *slog.Logger) *Coordinator {
 	store := model.NewStore(cfg.ZoneID)
 	broker := distribution.NewEventBroker(logger)
+	dist := distribution.NewDistributor(store, cfg, logger)
 
 	c := &Coordinator{
-		cfg:        cfg,
-		store:      store,
-		broker:     broker,
-		logger:     logger.With("component", "coordinator"),
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		cfg:         cfg,
+		store:       store,
+		broker:      broker,
+		distributor: dist,
+		logger:      logger.With("component", "coordinator"),
+		httpClient:  &http.Client{Timeout: 10 * time.Second},
 	}
 
-	c.distributor = distribution.NewDistributor(store, cfg, logger)
+	// 初始化启用的模块
+	c.activeModules = c.initModules(cfg, store, logger)
+
+	// 构建模块路由表传给 Distributor
+	distRoutes := make([]distribution.ModuleRoute, 0, len(c.activeModules))
+	for _, m := range c.activeModules {
+		routes := m.Routes()
+		dr := distribution.ModuleRoute{
+			ModuleName: m.Name(),
+			Routes:     make([]distribution.TaskRoute, len(routes)),
+		}
+		for i, r := range routes {
+			dr.Routes[i] = distribution.TaskRoute{
+				WorkerType: r.WorkerType,
+				TaskFilter: r.TaskFilter,
+				RuleFilter: r.RuleFilter,
+			}
+		}
+		distRoutes = append(distRoutes, dr)
+	}
+	dist.SetModuleRoutes(distRoutes)
+
+	// 构建现有子系统
 	c.healthChk = health.NewChecker(store, cfg, c.onWorkerStatusChange, logger)
 	c.gossip = gossip.New(cfg, &gossip.DelegateCallbacks{
 		OnWorkerUpdate: c.onGossipWorkerUpdate,
 		OnRebalanceReq: c.onGossipRebalance,
 	}, logger)
-	c.apiServer = api.NewServer(cfg, store, c.distributor, broker, c.healthChk, logger)
+	c.apiServer = api.NewServer(cfg, store, dist, broker, c.healthChk, c.activeModules, logger)
 
-	c.distributor.SetOnChange(func() {
+	dist.SetOnChange(func() {
 		c.broker.Broadcast(distribution.SSEEvent{
 			Event: "rebalance_complete",
 			Data: map[string]interface{}{
@@ -62,11 +89,46 @@ func New(cfg *config.Config, logger *slog.Logger) *Coordinator {
 	return c
 }
 
+func (c *Coordinator) initModules(cfg *config.Config, store *model.Store, logger *slog.Logger) []module.Module {
+	var active []module.Module
+	for _, name := range cfg.EnabledModules {
+		m, ok := module.Get(name)
+		if !ok {
+			logger.Warn("未知模块, 跳过", "name", name)
+			continue
+		}
+
+		var rawCfg map[string]interface{}
+		if cfg.ModuleConfigs != nil {
+			if rc, ok := cfg.ModuleConfigs[name]; ok {
+				rawCfg, _ = rc.(map[string]interface{})
+			}
+		}
+
+		mctx := module.ModuleContext{
+			Store:     store,
+			Config:    cfg,
+			RawConfig: rawCfg,
+			Logger:    logger.With("module", name),
+		}
+
+		if err := m.Init(mctx); err != nil {
+			logger.Error("模块初始化失败", "name", name, "error", err)
+			continue
+		}
+
+		active = append(active, m)
+		logger.Info("模块已加载", "name", name)
+	}
+	return active
+}
+
 func (c *Coordinator) Run(ctx context.Context) error {
 	c.logger.Info("Zone Coordinator 启动中",
 		"zone_id", c.cfg.ZoneID,
 		"http_addr", c.cfg.Server.HTTPAddr,
 		"gossip_port", c.cfg.Gossip.BindPort,
+		"modules", c.moduleNames(),
 	)
 
 	// 1. 绑定 HTTP 监听端口（同步，失败立即退出）
@@ -90,15 +152,38 @@ func (c *Coordinator) Run(ctx context.Context) error {
 	c.healthChk.Run(ctx)
 	c.logger.Info("健康检测已启动")
 
-	// 5. 启动资源同步
+	// 5. 启动模块
+	for _, m := range c.activeModules {
+		if err := m.Start(ctx); err != nil {
+			c.logger.Error("模块启动失败", "name", m.Name(), "error", err)
+		}
+	}
+
+	// 6. 启动资源同步
 	go c.resourceSyncLoop(ctx)
 	c.logger.Info("资源同步循环已启动", "interval", c.cfg.SyncInterval())
 
 	// 等待退出信号
 	<-ctx.Done()
 	c.logger.Info("Zone Coordinator 正在关闭...")
+
+	// 逆序停止模块
+	for i := len(c.activeModules) - 1; i >= 0; i-- {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		c.activeModules[i].Stop(shutdownCtx)
+		cancel()
+	}
+
 	c.gossip.Stop()
 	return nil
+}
+
+func (c *Coordinator) moduleNames() []string {
+	names := make([]string, len(c.activeModules))
+	for i, m := range c.activeModules {
+		names[i] = m.Name()
+	}
+	return names
 }
 
 func (c *Coordinator) resourceSyncLoop(ctx context.Context) {

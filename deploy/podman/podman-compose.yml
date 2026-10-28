@@ -1,0 +1,40 @@
+# DCS Infrastructure - Podman Compose
+# Usage: podman-compose up -d (or use deploy.sh)
+
+version: "3.8"
+
+services:
+  postgres:
+    image: 15dczmo6htbpugrx1i.xuanyuan.run/library/postgres:17-alpine
+    container_name: dcs-postgres
+    environment:
+      POSTGRES_USER: dcs
+      POSTGRES_PASSWORD: dcs123
+      POSTGRES_DB: dcs
+    ports:
+      - "5432:5432"
+    volumes:
+      - dcs-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: 15dczmo6htbpugrx1i.xuanyuan.run/library/redis:8.8.4-trixie
+    container_name: dcs-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - dcs-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  dcs-pgdata:
+  dcs-redisdata:
