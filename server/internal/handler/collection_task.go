@@ -30,6 +30,9 @@ func (h *CollectionTaskHandler) Routes() chi.Router {
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/enable", h.Enable)
 	r.Post("/{id}/disable", h.Disable)
+	r.Post("/batch/enable", h.BatchEnable)
+	r.Post("/batch/disable", h.BatchDisable)
+	r.Post("/batch/delete", h.BatchDelete)
 
 	return r
 }
@@ -171,4 +174,61 @@ func (h *CollectionTaskHandler) Disable(w http.ResponseWriter, r *http.Request) 
 	}
 
 	response.OK(w, map[string]string{"status": "disabled"})
+}
+
+func (h *CollectionTaskHandler) BatchEnable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "invalid request body")
+		return
+	}
+	var succeeded, failed int
+	for _, id := range req.IDs {
+		if err := h.svc.Enable(r.Context(), id); err != nil {
+			failed++
+		} else {
+			succeeded++
+		}
+	}
+	response.OK(w, map[string]int{"succeeded": succeeded, "failed": failed})
+}
+
+func (h *CollectionTaskHandler) BatchDisable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "invalid request body")
+		return
+	}
+	var succeeded, failed int
+	for _, id := range req.IDs {
+		if err := h.svc.Disable(r.Context(), id); err != nil {
+			failed++
+		} else {
+			succeeded++
+		}
+	}
+	response.OK(w, map[string]int{"succeeded": succeeded, "failed": failed})
+}
+
+func (h *CollectionTaskHandler) BatchDelete(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "invalid request body")
+		return
+	}
+	var succeeded, failed int
+	for _, id := range req.IDs {
+		if err := h.svc.Delete(r.Context(), id); err != nil {
+			failed++
+		} else {
+			succeeded++
+		}
+	}
+	response.OK(w, map[string]int{"succeeded": succeeded, "failed": failed})
 }

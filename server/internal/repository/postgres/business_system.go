@@ -127,3 +127,33 @@ func (r *businessSystemRepo) UnlinkZone(ctx context.Context, systemID, zoneID st
 	_, err := r.pool.Exec(ctx, `DELETE FROM business_system_zone WHERE system_id = $1 AND zone_id = $2`, systemID, zoneID)
 	return err
 }
+
+func (r *businessSystemRepo) UpdateMemberRole(ctx context.Context, systemID, userID, role string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE business_system_member SET role = $3 WHERE system_id = $1 AND user_id = $2`,
+		systemID, userID, role)
+	return err
+}
+
+func (r *businessSystemRepo) ListByUserID(ctx context.Context, userID string) ([]*model.BusinessSystem, error) {
+	query := `SELECT bs.system_id, bs.name, bs.description, bs.status, bs.created_at, bs.updated_at
+		FROM business_system bs
+		INNER JOIN business_system_member bsm ON bs.system_id = bsm.system_id
+		WHERE bsm.user_id = $1
+		ORDER BY bs.created_at DESC`
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*model.BusinessSystem
+	for rows.Next() {
+		bs := &model.BusinessSystem{}
+		if err := rows.Scan(&bs.SystemID, &bs.Name, &bs.Description, &bs.Status, &bs.CreatedAt, &bs.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, bs)
+	}
+	return items, nil
+}

@@ -126,3 +126,33 @@ func (s *BusinessSystemService) RemoveMember(ctx context.Context, systemID, user
 func (s *BusinessSystemService) ListMembers(ctx context.Context, systemID string) ([]*model.BusinessSystemMember, error) {
 	return s.repo.ListMembers(ctx, systemID)
 }
+
+func (s *BusinessSystemService) UpdateMemberRole(ctx context.Context, systemID, userID, role string) error {
+	members, err := s.repo.ListMembers(ctx, systemID)
+	if err != nil {
+		return errors.Wrap(err, 50001, 500, "failed to list members")
+	}
+	found := false
+	for _, m := range members {
+		if m.UserID == userID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.Wrap(nil, 40004, 404, "member not found")
+	}
+	return s.repo.UpdateMemberRole(ctx, systemID, userID, role)
+}
+
+func (s *BusinessSystemService) ListByUser(ctx context.Context, userID string) ([]*model.BusinessSystem, error) {
+	return s.repo.ListByUserID(ctx, userID)
+}
+
+func (s *BusinessSystemService) Suspend(ctx context.Context, id string) (*model.BusinessSystem, error) {
+	return s.Update(ctx, id, "", "", "suspended")
+}
+
+func (s *BusinessSystemService) Archive(ctx context.Context, id string) (*model.BusinessSystem, error) {
+	return s.Update(ctx, id, "", "", "archived")
+}

@@ -93,12 +93,30 @@ func (s *Server) registerRoutes(r chi.Router) {
 	sdcSvc := service.NewServiceDiscoveryConfigService(sdcRepo)
 	sdcHandler := handler.NewServiceDiscoveryConfigHandler(sdcSvc)
 
+	ttRepo := postgres.NewTaskTypeRepo(s.pool)
+	ttSvc := service.NewTaskTypeService(ttRepo)
+	ttHandler := handler.NewTaskTypeHandler(ttSvc)
+
 	boRepo := postgres.NewBusinessOverviewRepo(s.pool)
 	boSvc := service.NewBusinessOverviewService(boRepo)
 	boHandler := handler.NewBusinessOverviewHandler(boSvc)
 
+	nsRepo := postgres.NewNetworkSegmentRepo(s.pool)
+	nsSvc := service.NewNetworkSegmentService(nsRepo)
+	nsHandler := handler.NewNetworkSegmentHandler(nsSvc)
+
 	r.Mount("/business-systems", bsHandler.Routes())
-	r.Mount("/zones", zoneHandler.Routes())
+	r.Route("/zones", func(r chi.Router) {
+		// Zone routes
+		r.Post("/", zoneHandler.Create)
+		r.Get("/", zoneHandler.List)
+		r.Get("/{id}", zoneHandler.GetByID)
+		r.Put("/{id}", zoneHandler.Update)
+		r.Delete("/{id}", zoneHandler.Delete)
+
+		// Network segment routes (zone-scoped)
+		r.Mount("/{zoneId}/segments", nsHandler.Routes())
+	})
 	r.Mount("/resource-types", rtHandler.Routes())
 	r.Mount("/instances", instHandler.Routes())
 	r.Mount("/data-sinks", sinkHandler.Routes())
@@ -120,4 +138,5 @@ func (s *Server) registerRoutes(r chi.Router) {
 	r.Mount("/zone-coordinators", zcHandler.Routes())
 	r.Mount("/sd-configs", sdcHandler.Routes())
 	r.Mount("/business-overview", boHandler.Routes())
+	r.Mount("/task-types", ttHandler.Routes())
 }

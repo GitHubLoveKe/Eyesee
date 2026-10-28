@@ -1,5 +1,5 @@
 <template>
-  <el-container class="app-container">
+  <el-container v-if="authStore.isLoggedIn" class="app-container">
     <el-aside width="220px" class="app-aside">
       <div class="logo">
         <h2>DCS</h2>
@@ -34,6 +34,7 @@
             <span>任务管理</span>
           </template>
           <el-menu-item index="/collection-tasks">采集任务</el-menu-item>
+          <el-menu-item index="/task-types">任务类型</el-menu-item>
           <el-menu-item index="/rc-tasks">RC任务</el-menu-item>
           <el-menu-item index="/scheduled-tasks">定时任务</el-menu-item>
           <el-menu-item index="/data-sinks">数据存储</el-menu-item>
@@ -63,16 +64,9 @@
     <el-container>
       <el-header class="app-header">
         <div class="header-right">
-          <el-tag type="success">Phase 4</el-tag>
-          <el-dropdown>
-            <span class="user-info">admin</span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item>个人设置</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-tag type="success">Phase 5</el-tag>
+          <span class="user-info">{{ authStore.username || 'admin' }}</span>
+          <el-button size="small" @click="handleLogout">退出登录</el-button>
         </div>
       </el-header>
       <el-main class="app-main">
@@ -80,10 +74,26 @@
       </el-main>
     </el-container>
   </el-container>
+  <router-view v-else />
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Monitor, Grid, List, Setting, Bell } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+onMounted(() => {
+  authStore.loadFromStorage()
+})
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <style>

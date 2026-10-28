@@ -27,6 +27,7 @@ func (h *ScheduledTaskHandler) Routes() chi.Router {
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/enable", h.Enable)
 	r.Post("/{id}/disable", h.Disable)
+	r.Post("/{id}/trigger", h.Trigger)
 	r.Get("/{id}/executions", h.ListExecutions)
 	return r
 }
@@ -155,4 +156,14 @@ func (h *ScheduledTaskHandler) ListExecutions(w http.ResponseWriter, r *http.Req
 		return
 	}
 	response.OK(w, executions)
+}
+
+func (h *ScheduledTaskHandler) Trigger(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	execution, err := h.svc.Trigger(r.Context(), id)
+	if err != nil {
+		handleAppError(w, err)
+		return
+	}
+	response.OK(w, execution)
 }

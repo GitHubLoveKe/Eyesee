@@ -124,3 +124,7 @@ func (s *InstanceService) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *InstanceService) UpdateTestResult(ctx context.Context, id string, testAt time.Time, result string) error {
+	return s.repo.UpdateTestResult(ctx, id, testAt, result)
+}

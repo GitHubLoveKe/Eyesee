@@ -13,6 +13,7 @@ type Config struct {
 	Redis    RedisConfig    `yaml:"redis"`
 	Log      LogConfig      `yaml:"log"`
 	Trace    TraceConfig    `yaml:"trace"`
+	JWT      JWTConfig      `yaml:"jwt"`
 }
 
 type ServerConfig struct {
@@ -46,6 +47,13 @@ type TraceConfig struct {
 	Enabled  bool    `yaml:"enabled"`
 	Endpoint string  `yaml:"endpoint"`
 	Sampler  float64 `yaml:"sampler"`
+}
+
+type JWTConfig struct {
+	Secret       string `yaml:"secret"`
+	ExpireHours  int    `yaml:"expire_hours"`
+	RefreshDays  int    `yaml:"refresh_days"`
+	Issuer       string `yaml:"issuer"`
 }
 
 func (c *DatabaseConfig) DSN() string {
@@ -94,6 +102,9 @@ func Load(path string) (*Config, error) {
 	if v := os.Getenv("DCS_REDIS_ADDR"); v != "" {
 		cfg.Redis.Addr = v
 	}
+	if v := os.Getenv("DCS_JWT_SECRET"); v != "" {
+		cfg.JWT.Secret = v
+	}
 
 	return cfg, nil
 }
@@ -126,6 +137,12 @@ func DefaultConfig() *Config {
 			Enabled:  false,
 			Endpoint: "localhost:4317",
 			Sampler:  0.1,
+		},
+		JWT: JWTConfig{
+			Secret:      "dcs-default-secret-change-me",
+			ExpireHours: 24,
+			RefreshDays: 7,
+			Issuer:      "dcs-server",
 		},
 	}
 }

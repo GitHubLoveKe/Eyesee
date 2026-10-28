@@ -21,6 +21,7 @@ type BusinessSystemMember struct {
 
 type Zone struct {
 	ZoneID         string    `json:"zone_id" db:"zone_id"`
+	SystemID       *string   `json:"system_id" db:"system_id"`
 	Name           string    `json:"name" db:"name"`
 	Description    string    `json:"description" db:"description"`
 	CollectorType  string    `json:"collector_type" db:"collector_type"`
@@ -387,4 +388,14 @@ type ResourceTypeMetric struct {
 	TypeID    string    `json:"type_id" db:"type_id"`
 	MetricID  string    `json:"metric_id" db:"metric_id"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+type UserAuthSource struct {
+	ID           int64     `json:"id" db:"id"`
+	UserID       string    `json:"user_id" db:"user_id"`
+	SourceType   string    `json:"source_type" db:"source_type"`
+	ExternalID   string    `json:"external_id" db:"external_id"`
+	PasswordHash string    `json:"-" db:"password_hash"`
+	Extra        string    `json:"extra" db:"extra"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 }

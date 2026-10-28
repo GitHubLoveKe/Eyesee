@@ -36,11 +36,6 @@ func (h *ZoneHandler) Routes() chi.Router {
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
 
-	r.Post("/{id}/segments", h.CreateSegment)
-	r.Get("/{id}/segments", h.ListSegments)
-	r.Put("/{id}/segments/{segmentId}", h.UpdateSegment)
-	r.Delete("/{id}/segments/{segmentId}", h.DeleteSegment)
-
 	return r
 }
 

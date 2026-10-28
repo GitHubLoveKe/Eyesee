@@ -25,3 +25,9 @@ trace:
   enabled: false
   endpoint: localhost:4317
   sampler: 0.1
+
+jwt:
+  secret: dcs-dev-secret-change-me-in-production
+  expire_hours: 24
+  refresh_days: 7
+  issuer: dcs-server

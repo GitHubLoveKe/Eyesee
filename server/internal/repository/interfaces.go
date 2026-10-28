@@ -16,9 +16,21 @@ type BusinessSystemRepo interface {
 	AddMember(ctx context.Context, m *model.BusinessSystemMember) error
 	RemoveMember(ctx context.Context, systemID, userID string) error
 	ListMembers(ctx context.Context, systemID string) ([]*model.BusinessSystemMember, error)
+	UpdateMemberRole(ctx context.Context, systemID, userID, role string) error
+
+	ListByUserID(ctx context.Context, userID string) ([]*model.BusinessSystem, error)
 
 	LinkZone(ctx context.Context, systemID, zoneID string) error
 	UnlinkZone(ctx context.Context, systemID, zoneID string) error
+}
+
+type NetworkSegmentRepo interface {
+	Create(ctx context.Context, seg *model.NetworkSegment) error
+	GetByID(ctx context.Context, id int64) (*model.NetworkSegment, error)
+	ListByZoneID(ctx context.Context, zoneID string) ([]*model.NetworkSegment, error)
+	Update(ctx context.Context, seg *model.NetworkSegment) error
+	Delete(ctx context.Context, id int64) error
+	CheckCIDROverlap(ctx context.Context, zoneID, cidr string, excludeSegmentID *int64) (bool, error)
 }
 
 type ZoneRepo interface {
@@ -52,6 +64,7 @@ type InstanceRepo interface {
 	Update(ctx context.Context, inst *model.Instance) error
 	Delete(ctx context.Context, id string) error
 	HasTasks(ctx context.Context, id string) (bool, error)
+	UpdateTestResult(ctx context.Context, id string, testAt time.Time, result string) error
 }
 
 type InstanceFilter struct {
@@ -70,6 +83,7 @@ type DataSinkRepo interface {
 	List(ctx context.Context, zoneID, sinkType string) ([]*model.DataSink, error)
 	Update(ctx context.Context, ds *model.DataSink) error
 	Delete(ctx context.Context, id string) error
+	UpdateHealthResult(ctx context.Context, id string, checkAt time.Time, result string) error
 }
 
 type TaskTypeRepo interface {
@@ -118,6 +132,12 @@ type UserRepo interface {
 	Update(ctx context.Context, u *model.SysUser) error
 	Delete(ctx context.Context, id string) error
 	UpdateLastLogin(ctx context.Context, id string) error
+}
+
+type UserAuthSourceRepo interface {
+	GetByUserIDAndType(ctx context.Context, userID string, sourceType string) (*model.UserAuthSource, error)
+	Create(ctx context.Context, src *model.UserAuthSource) error
+	UpdatePassword(ctx context.Context, userID string, sourceType string, passwordHash string) error
 }
 
 type UserFilter struct {

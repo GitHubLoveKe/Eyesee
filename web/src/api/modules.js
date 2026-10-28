@@ -6,9 +6,13 @@ export const businessSystemApi = {
   create: (data) => api.post('/business-systems', data),
   update: (id, data) => api.put(`/business-systems/${id}`, data),
   delete: (id) => api.delete(`/business-systems/${id}`),
+  suspend: (id) => api.post(`/business-systems/${id}/suspend`),
+  archive: (id) => api.post(`/business-systems/${id}/archive`),
   listMembers: (id) => api.get(`/business-systems/${id}/members`),
   addMember: (id, data) => api.post(`/business-systems/${id}/members`, data),
   removeMember: (id, userId) => api.delete(`/business-systems/${id}/members/${userId}`),
+  updateMemberRole: (id, userId, data) => api.put(`/business-systems/${id}/members/${userId}`, data),
+  my: () => api.get('/business-systems/my'),
 }
 
 export const zoneApi = {
@@ -17,9 +21,11 @@ export const zoneApi = {
   create: (data) => api.post('/zones', data),
   update: (id, data) => api.put(`/zones/${id}`, data),
   delete: (id) => api.delete(`/zones/${id}`),
-  listSegments: (id) => api.get(`/zones/${id}/segments`),
-  createSegment: (id, data) => api.post(`/zones/${id}/segments`, data),
-  deleteSegment: (id, segmentId) => api.delete(`/zones/${id}/segments/${segmentId}`),
+  listSegments: (zoneId) => api.get(`/zones/${zoneId}/segments`),
+  getSegment: (zoneId, segmentId) => api.get(`/zones/${zoneId}/segments/${segmentId}`),
+  createSegment: (zoneId, data) => api.post(`/zones/${zoneId}/segments`, data),
+  updateSegment: (zoneId, segmentId, data) => api.put(`/zones/${zoneId}/segments/${segmentId}`, data),
+  deleteSegment: (zoneId, segmentId) => api.delete(`/zones/${zoneId}/segments/${segmentId}`),
 }
 
 export const resourceTypeApi = {
@@ -37,6 +43,9 @@ export const instanceApi = {
   create: (data) => api.post('/instances', data),
   update: (id, data) => api.put(`/instances/${id}`, data),
   delete: (id) => api.delete(`/instances/${id}`),
+  test: (id) => api.post(`/instances/${id}/test`),
+  batchImport: (data) => api.post('/instances/batch/import', data),
+  batchExport: (params) => api.get('/instances/batch/export', { params }),
 }
 
 export const dataSinkApi = {
@@ -45,6 +54,7 @@ export const dataSinkApi = {
   create: (data) => api.post('/data-sinks', data),
   update: (id, data) => api.put(`/data-sinks/${id}`, data),
   delete: (id) => api.delete(`/data-sinks/${id}`),
+  health: (id) => api.post(`/data-sinks/${id}/health`),
 }
 
 export const collectionTaskApi = {
@@ -55,6 +65,9 @@ export const collectionTaskApi = {
   delete: (id) => api.delete(`/collection-tasks/${id}`),
   enable: (id) => api.post(`/collection-tasks/${id}/enable`),
   disable: (id) => api.post(`/collection-tasks/${id}/disable`),
+  batchEnable: (ids) => api.post('/collection-tasks/batch/enable', { ids }),
+  batchDisable: (ids) => api.post('/collection-tasks/batch/disable', { ids }),
+  batchDelete: (ids) => api.post('/collection-tasks/batch/delete', { ids }),
 }
 
 export const collectorApi = {
@@ -118,6 +131,7 @@ export const scheduledTaskApi = {
   delete: (id) => api.delete(`/scheduled-tasks/${id}`),
   enable: (id) => api.post(`/scheduled-tasks/${id}/enable`),
   disable: (id) => api.post(`/scheduled-tasks/${id}/disable`),
+  trigger: (id) => api.post(`/scheduled-tasks/${id}/trigger`),
   listExecutions: (id, params) => api.get(`/scheduled-tasks/${id}/executions`, { params }),
 }
 
@@ -193,4 +207,17 @@ export const sdConfigApi = {
 
 export const businessOverviewApi = {
   get: (systemId) => api.get(`/business-overview/${systemId}`),
+}
+
+export const authApi = {
+  login: (data) => api.post('/auth/login', data),
+  refresh: (data) => api.post('/auth/refresh', data),
+}
+
+export const taskTypeApi = {
+  list: () => api.get('/task-types'),
+  get: (id) => api.get(`/task-types/${id}`),
+  create: (data) => api.post('/task-types', data),
+  update: (id, data) => api.put(`/task-types/${id}`, data),
+  delete: (id) => api.delete(`/task-types/${id}`),
 }

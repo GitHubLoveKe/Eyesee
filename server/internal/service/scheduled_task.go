@@ -175,3 +175,30 @@ func (s *ScheduledTaskService) ListExecutions(ctx context.Context, taskID string
 	}
 	return s.repo.ListExecutions(ctx, taskID, limit)
 }
+
+func (s *ScheduledTaskService) Trigger(ctx context.Context, taskID string) (*model.ScheduledTaskExecution, error) {
+	t, err := s.repo.GetByID(ctx, taskID)
+	if err != nil {
+		return nil, errors.Wrap(err, 50001, 500, "failed to get scheduled task")
+	}
+	if t == nil {
+		return nil, errors.ErrNotFound
+	}
+
+	exec := &model.ScheduledTaskExecution{
+		TaskID:    taskID,
+		StartedAt: time.Now(),
+		Status:    "running",
+	}
+
+	if err := s.repo.CreateExecution(ctx, exec); err != nil {
+		return nil, errors.Wrap(err, 50001, 500, "failed to create execution")
+	}
+
+	now := time.Now()
+	t.LastRunAt = &now
+	t.UpdatedAt = now
+	_ = s.repo.Update(ctx, t)
+
+	return exec, nil
+}

@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"dcs/internal/config"
+	"dcs/internal/handler"
 	"dcs/internal/middleware"
 	"dcs/internal/repository/postgres"
+	"dcs/internal/service"
 	"dcs/pkg/response"
 	"log/slog"
 	"net/http"
@@ -64,7 +66,16 @@ func (s *Server) setupRouter() {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		s.registerRoutes(r)
+		authHandler, jwtMiddleware := s.setupAuth(r)
+
+		// Public auth routes (no JWT required)
+		r.Mount("/auth", authHandler.Routes())
+
+		// Protected routes (JWT required)
+		r.Group(func(r chi.Router) {
+			r.Use(jwtMiddleware)
+			s.registerRoutes(r)
+		})
 	})
 
 	s.router = r
@@ -93,4 +104,13 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) Close() {
 	s.pool.Close()
 	s.rdb.Close()
+}
+
+func (s *Server) setupAuth(r chi.Router) (*handler.AuthHandler, func(http.Handler) http.Handler) {
+	userRepo := postgres.NewUserRepo(s.pool)
+	authSrcRepo := postgres.NewUserAuthSourceRepo(s.pool)
+	authSvc := service.NewAuthService(userRepo, authSrcRepo, &s.cfg.JWT)
+	authHandler := handler.NewAuthHandler(authSvc)
+	jwtMiddleware := middleware.JWT(authSvc, &s.cfg.JWT)
+	return authHandler, jwtMiddleware
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"dcs/internal/model"
 	"dcs/internal/repository"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -125,6 +126,13 @@ func (r *instanceRepo) HasTasks(ctx context.Context, id string) (bool, error) {
 	var exists bool
 	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) > 0 FROM collection_task WHERE instance_id = $1`, id).Scan(&exists)
 	return exists, err
+}
+
+func (r *instanceRepo) UpdateTestResult(ctx context.Context, id string, testAt time.Time, result string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE instance SET last_test_at = $2, last_test_result = $3, updated_at = $2 WHERE instance_id = $1`,
+		id, testAt, result)
+	return err
 }
 
 func itoa(i int) string {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"dcs/internal/middleware"
 	"dcs/internal/service"
 	"dcs/pkg/response"
 	"encoding/json"
@@ -23,13 +24,17 @@ func (h *BusinessSystemHandler) Routes() chi.Router {
 
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
+	r.Get("/my", h.ListMy)
 	r.Get("/{id}", h.GetByID)
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
+	r.Post("/{id}/suspend", h.Suspend)
+	r.Post("/{id}/archive", h.Archive)
 
 	r.Post("/{id}/members", h.AddMember)
 	r.Get("/{id}/members", h.ListMembers)
 	r.Delete("/{id}/members/{userId}", h.RemoveMember)
+	r.Put("/{id}/members/{userId}", h.UpdateMemberRole)
 
 	return r
 }
@@ -156,4 +161,59 @@ func (h *BusinessSystemHandler) RemoveMember(w http.ResponseWriter, r *http.Requ
 	}
 
 	response.OK(w, map[string]string{"status": "removed"})
+}
+
+func (h *BusinessSystemHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	userID := chi.URLParam(r, "userId")
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "invalid request body")
+		return
+	}
+
+	if err := h.svc.UpdateMemberRole(r.Context(), id, userID, req.Role); err != nil {
+		handleAppError(w, err)
+		return
+	}
+
+	response.OK(w, map[string]string{"status": "updated"})
+}
+
+func (h *BusinessSystemHandler) ListMy(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		response.Unauthorized(w, "missing user context")
+		return
+	}
+
+	systems, err := h.svc.ListByUser(r.Context(), userID)
+	if err != nil {
+		handleAppError(w, err)
+		return
+	}
+
+	response.OK(w, systems)
+}
+
+func (h *BusinessSystemHandler) Suspend(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	bs, err := h.svc.Suspend(r.Context(), id)
+	if err != nil {
+		handleAppError(w, err)
+		return
+	}
+	response.OK(w, bs)
+}
+
+func (h *BusinessSystemHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	bs, err := h.svc.Archive(r.Context(), id)
+	if err != nil {
+		handleAppError(w, err)
+		return
+	}
+	response.OK(w, bs)
 }

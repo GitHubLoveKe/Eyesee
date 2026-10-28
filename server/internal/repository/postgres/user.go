@@ -26,7 +26,7 @@ func (r *userRepo) Create(ctx context.Context, u *model.SysUser) error {
 
 func (r *userRepo) GetByID(ctx context.Context, id string) (*model.SysUser, error) {
 	u := &model.SysUser{}
-	query := `SELECT user_id, username, display_name, email, phone, role, status, last_login_at, created_at, updated_at
+	query := `SELECT user_id, username, COALESCE(display_name,''), COALESCE(email,''), COALESCE(phone,''), role, status, last_login_at, created_at, updated_at
 		FROM sys_user WHERE user_id = $1`
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&u.UserID, &u.Username, &u.DisplayName, &u.Email, &u.Phone,
@@ -40,7 +40,7 @@ func (r *userRepo) GetByID(ctx context.Context, id string) (*model.SysUser, erro
 
 func (r *userRepo) GetByUsername(ctx context.Context, username string) (*model.SysUser, error) {
 	u := &model.SysUser{}
-	query := `SELECT user_id, username, display_name, email, phone, role, status, last_login_at, created_at, updated_at
+	query := `SELECT user_id, username, COALESCE(display_name,''), COALESCE(email,''), COALESCE(phone,''), role, status, last_login_at, created_at, updated_at
 		FROM sys_user WHERE username = $1`
 	err := r.pool.QueryRow(ctx, query, username).Scan(
 		&u.UserID, &u.Username, &u.DisplayName, &u.Email, &u.Phone,
@@ -79,7 +79,7 @@ func (r *userRepo) List(ctx context.Context, f repository.UserFilter) ([]*model.
 		return nil, 0, err
 	}
 
-	listQuery := `SELECT user_id, username, display_name, email, phone, role, status, last_login_at, created_at, updated_at
+	listQuery := `SELECT user_id, username, COALESCE(display_name,''), COALESCE(email,''), COALESCE(phone,''), role, status, last_login_at, created_at, updated_at
 		FROM sys_user` + where + ` ORDER BY created_at DESC LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
 	args = append(args, f.Limit, f.Offset)
 

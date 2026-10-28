@@ -107,3 +107,7 @@ func (s *DataSinkService) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *DataSinkService) UpdateHealthResult(ctx context.Context, id string, checkAt time.Time, result string) error {
+	return s.repo.UpdateHealthResult(ctx, id, checkAt, result)
+}

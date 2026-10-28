@@ -4,6 +4,7 @@ import (
 	"context"
 	"dcs/internal/model"
 	"dcs/internal/repository"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,5 +86,12 @@ func (r *dataSinkRepo) Update(ctx context.Context, ds *model.DataSink) error {
 
 func (r *dataSinkRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM data_sink WHERE sink_id = $1`, id)
+	return err
+}
+
+func (r *dataSinkRepo) UpdateHealthResult(ctx context.Context, id string, checkAt time.Time, result string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE data_sink SET last_check_at = $2, status = $3, updated_at = $2 WHERE sink_id = $1`,
+		id, checkAt, result)
 	return err
 }
