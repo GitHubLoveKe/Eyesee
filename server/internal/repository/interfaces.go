@@ -108,3 +108,84 @@ type CollectorNodeRepo interface {
 	Delete(ctx context.Context, id string) error
 	UpdateHeartbeat(ctx context.Context, id string) error
 }
+
+type UserRepo interface {
+	Create(ctx context.Context, u *model.SysUser) error
+	GetByID(ctx context.Context, id string) (*model.SysUser, error)
+	GetByUsername(ctx context.Context, username string) (*model.SysUser, error)
+	List(ctx context.Context, filter UserFilter) ([]*model.SysUser, int64, error)
+	Update(ctx context.Context, u *model.SysUser) error
+	Delete(ctx context.Context, id string) error
+	UpdateLastLogin(ctx context.Context, id string) error
+}
+
+type UserFilter struct {
+	Role    string
+	Status  string
+	Keyword string
+	Offset  int
+	Limit   int
+}
+
+type NotificationChannelRepo interface {
+	Create(ctx context.Context, nc *model.NotificationChannel) error
+	GetByID(ctx context.Context, id string) (*model.NotificationChannel, error)
+	List(ctx context.Context, channelType string) ([]*model.NotificationChannel, error)
+	Update(ctx context.Context, nc *model.NotificationChannel) error
+	Delete(ctx context.Context, id string) error
+	UpdateTestResult(ctx context.Context, id string, result string) error
+}
+
+type AlertGroupRepo interface {
+	Create(ctx context.Context, g *model.AlertGroup) error
+	GetByID(ctx context.Context, id string) (*model.AlertGroup, error)
+	List(ctx context.Context) ([]*model.AlertGroup, error)
+	Update(ctx context.Context, g *model.AlertGroup) error
+	Delete(ctx context.Context, id string) error
+
+	AddMember(ctx context.Context, m *model.AlertGroupMember) error
+	RemoveMember(ctx context.Context, groupID, userID string) error
+	ListMembers(ctx context.Context, groupID string) ([]*model.AlertGroupMember, error)
+}
+
+type AlertStrategyRepo interface {
+	Create(ctx context.Context, s *model.AlertStrategy) error
+	GetByID(ctx context.Context, id string) (*model.AlertStrategy, error)
+	List(ctx context.Context, filter AlertStrategyFilter) ([]*model.AlertStrategy, int64, error)
+	Update(ctx context.Context, s *model.AlertStrategy) error
+	Delete(ctx context.Context, id string) error
+
+	LinkInstance(ctx context.Context, si *model.AlertStrategyInstance) error
+	UnlinkInstance(ctx context.Context, strategyID, instanceID string) error
+	ListLinkedInstances(ctx context.Context, strategyID string) ([]*model.AlertStrategyInstance, error)
+}
+
+type AlertStrategyFilter struct {
+	Severity string
+	Status   string
+	Enabled  *bool
+	Keyword  string
+	Offset   int
+	Limit    int
+}
+
+type ScheduledTaskRepo interface {
+	Create(ctx context.Context, t *model.ScheduledTask) error
+	GetByID(ctx context.Context, id string) (*model.ScheduledTask, error)
+	List(ctx context.Context, filter ScheduledTaskFilter) ([]*model.ScheduledTask, int64, error)
+	Update(ctx context.Context, t *model.ScheduledTask) error
+	Delete(ctx context.Context, id string) error
+
+	CreateExecution(ctx context.Context, e *model.ScheduledTaskExecution) error
+	UpdateExecution(ctx context.Context, e *model.ScheduledTaskExecution) error
+	ListExecutions(ctx context.Context, taskID string, limit int) ([]*model.ScheduledTaskExecution, error)
+}
+
+type ScheduledTaskFilter struct {
+	TaskType string
+	Status   string
+	Enabled  *bool
+	Keyword  string
+	Offset   int
+	Limit    int
+}

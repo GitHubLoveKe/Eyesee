@@ -160,3 +160,70 @@ type ScheduledTask struct {
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
+
+type ScheduledTaskExecution struct {
+	ExecutionID  int64      `json:"execution_id" db:"execution_id"`
+	TaskID       string     `json:"task_id" db:"task_id"`
+	StartedAt    time.Time  `json:"started_at" db:"started_at"`
+	CompletedAt  *time.Time `json:"completed_at" db:"completed_at"`
+	DurationMs   *int       `json:"duration_ms" db:"duration_ms"`
+	Status       string     `json:"status" db:"status"`
+	ErrorMessage *string    `json:"error_message" db:"error_message"`
+}
+
+type NotificationChannel struct {
+	ChannelID     string     `json:"channel_id" db:"channel_id"`
+	Name          string     `json:"name" db:"name"`
+	ChannelType   string     `json:"channel_type" db:"channel_type"`
+	Config        string     `json:"config" db:"config"`
+	Enabled       bool       `json:"enabled" db:"enabled"`
+	LastTestAt    *time.Time `json:"last_test_at" db:"last_test_at"`
+	LastTestResult *string   `json:"last_test_result" db:"last_test_result"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+type AlertGroup struct {
+	GroupID           string    `json:"group_id" db:"group_id"`
+	Name              string    `json:"name" db:"name"`
+	Description       string    `json:"description" db:"description"`
+	ParentID          *string   `json:"parent_id" db:"parent_id"`
+	EscalationMinutes *int      `json:"escalation_minutes" db:"escalation_minutes"`
+	CreatedAt         time.Time `json:"created_at" db:"created_at"`
+}
+
+type AlertGroupMember struct {
+	ID        int64     `json:"id" db:"id"`
+	GroupID   string    `json:"group_id" db:"group_id"`
+	UserID    string    `json:"user_id" db:"user_id"`
+	Role      string    `json:"role" db:"role"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+type AlertStrategy struct {
+	StrategyID    string    `json:"strategy_id" db:"strategy_id"`
+	Name          string    `json:"name" db:"name"`
+	Description   string    `json:"description" db:"description"`
+	MetricID      string    `json:"metric_id" db:"metric_id"`
+	ExprTemplate  string    `json:"expr_template" db:"expr_template"`
+	Duration      string    `json:"duration" db:"duration"`
+	Severity      string    `json:"severity" db:"severity"`
+	ScopeType     string    `json:"scope_type" db:"scope_type"`
+	ScopeValue    string    `json:"scope_value" db:"scope_value"`
+	AlertGroupID  *string   `json:"alert_group_id" db:"alert_group_id"`
+	ChannelID     *string   `json:"channel_id" db:"channel_id"`
+	Labels        string    `json:"labels" db:"labels"`
+	Annotations   string    `json:"annotations" db:"annotations"`
+	Enabled       bool      `json:"enabled" db:"enabled"`
+	Status        string    `json:"status" db:"status"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type AlertStrategyInstance struct {
+	ID          int64     `json:"id" db:"id"`
+	StrategyID  string    `json:"strategy_id" db:"strategy_id"`
+	InstanceID  string    `json:"instance_id" db:"instance_id"`
+	ZoneID      string    `json:"zone_id" db:"zone_id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}

@@ -40,6 +40,26 @@ func (s *Server) registerRoutes(r chi.Router) {
 	statusSvc := service.NewStatusCacheService(s.rdb)
 	statusHandler := handler.NewStatusCacheHandler(statusSvc)
 
+	userRepo := postgres.NewUserRepo(s.pool)
+	userSvc := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userSvc)
+
+	ncRepo := postgres.NewNotificationChannelRepo(s.pool)
+	ncSvc := service.NewNotificationChannelService(ncRepo)
+	ncHandler := handler.NewNotificationChannelHandler(ncSvc)
+
+	agRepo := postgres.NewAlertGroupRepo(s.pool)
+	agSvc := service.NewAlertGroupService(agRepo)
+	agHandler := handler.NewAlertGroupHandler(agSvc)
+
+	asRepo := postgres.NewAlertStrategyRepo(s.pool)
+	asSvc := service.NewAlertStrategyService(asRepo)
+	asHandler := handler.NewAlertStrategyHandler(asSvc)
+
+	stRepo := postgres.NewScheduledTaskRepo(s.pool)
+	stSvc := service.NewScheduledTaskService(stRepo)
+	stHandler := handler.NewScheduledTaskHandler(stSvc)
+
 	r.Mount("/business-systems", bsHandler.Routes())
 	r.Mount("/zones", zoneHandler.Routes())
 	r.Mount("/resource-types", rtHandler.Routes())
@@ -48,4 +68,9 @@ func (s *Server) registerRoutes(r chi.Router) {
 	r.Mount("/collection-tasks", ctHandler.Routes())
 	r.Mount("/collector-nodes", cnHandler.Routes())
 	r.Mount("/status", statusHandler.Routes())
+	r.Mount("/users", userHandler.Routes())
+	r.Mount("/notification-channels", ncHandler.Routes())
+	r.Mount("/alert-groups", agHandler.Routes())
+	r.Mount("/alert-strategies", asHandler.Routes())
+	r.Mount("/scheduled-tasks", stHandler.Routes())
 }

@@ -1,6 +1,6 @@
 # DCS 项目进度跟踪
 
-> 多网区监控采集管理平台 - Phase 1 核心骨架
+> 多网区监控采集管理平台
 
 ## 项目信息
 
@@ -28,6 +28,16 @@
 | I1 | 采集器管理 | ✅ | ✅ | ✅ | 心跳上报 |
 | I3 | 状态缓存 | ✅ | ✅ | ✅ | Redis聚合查询 |
 
+## Phase 2 模块进度
+
+| 模块 | 名称 | 后端 | 前端 | 测试 | 备注 |
+|------|------|------|------|------|------|
+| I2 | 用户管理 | ✅ | ✅ | ✅ | CRUD+角色管理 |
+| A3 | 通知渠道 | ✅ | ✅ | ✅ | 多渠道+连通测试 |
+| A2 | 告警组 | ✅ | ✅ | ✅ | 成员管理+升级链 |
+| A1 | 告警策略 | ✅ | ✅ | ✅ | 作用域+实例关联 |
+| T5 | 定时任务 | ✅ | ✅ | ✅ | 启禁用+执行历史 |
+
 ## 后端架构
 
 ```
@@ -48,6 +58,8 @@ server/
 │   ├── errors/                  # 错误码
 │   └── otelutil/                # OpenTelemetry工具
 └── sql/postgres/                # PostgreSQL DDL迁移
+    ├── 001_init.sql             # Phase 1 DDL
+    └── 002_phase2.sql           # Phase 2 DDL
 ```
 
 ## 前端架构
@@ -56,11 +68,21 @@ server/
 web/
 ├── src/
 │   ├── api/                     # API调用层
-│   ├── components/              # 通用组件
 │   ├── views/                   # 页面视图(按模块分目录)
+│   │   ├── dashboard/           # 概览
+│   │   ├── business/            # B1
+│   │   ├── zone/                # M1
+│   │   ├── resource/            # M2
+│   │   ├── instance/            # M3
+│   │   ├── datasink/            # M5
+│   │   ├── task/                # T1
+│   │   ├── collector/           # I1
+│   │   ├── user/                # I2
+│   │   ├── notification/        # A3
+│   │   ├── alert-group/         # A2
+│   │   ├── alert-strategy/      # A1
+│   │   └── scheduled-task/      # T5
 │   ├── router/                  # 路由配置
-│   ├── stores/                  # Pinia状态管理
-│   ├── utils/                   # 工具函数
 │   ├── App.vue
 │   └── main.js
 ├── package.json
@@ -80,6 +102,10 @@ web/
 # 基础设施
 bash deploy/podman/deploy.sh
 
+# 数据库迁移
+cat server/sql/postgres/001_init.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
+cat server/sql/postgres/002_phase2.sql | podman exec -i dcs-postgres psql -U dcs -d dcs
+
 # 后端
 cd server && go run cmd/server/main.go
 
@@ -89,5 +115,6 @@ cd web && npm run dev
 
 ## Git提交记录
 
-- `c0d3b14` 协调器v1 (main分支已有)
-- Phase 1 核心骨架首次提交 (待提交)
+- `c0d3b14` 协调器v1 (main分支)
+- `ddce5e7` Phase 1: DCS 核心骨架完成 — Go后端 + Vue前端 + 8模块全链路 (v0.1.0-phase1)
+- Phase 2: 告警层 + 用户管理 + 定时任务 — 5模块全链路 (v0.2.0-phase2 待提交)

@@ -41,6 +41,31 @@ const routes = [
     name: 'Collectors',
     component: () => import('@/views/collector/Index.vue'),
   },
+  {
+    path: '/users',
+    name: 'Users',
+    component: () => import('@/views/user/Index.vue'),
+  },
+  {
+    path: '/notification-channels',
+    name: 'NotificationChannels',
+    component: () => import('@/views/notification/Index.vue'),
+  },
+  {
+    path: '/alert-groups',
+    name: 'AlertGroups',
+    component: () => import('@/views/alert-group/Index.vue'),
+  },
+  {
+    path: '/alert-strategies',
+    name: 'AlertStrategies',
+    component: () => import('@/views/alert-strategy/Index.vue'),
+  },
+  {
+    path: '/scheduled-tasks',
+    name: 'ScheduledTasks',
+    component: () => import('@/views/scheduled-task/Index.vue'),
+  },
 ]
 
 const router = createRouter({

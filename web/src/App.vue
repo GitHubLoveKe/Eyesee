@@ -33,7 +33,17 @@
             <span>任务管理</span>
           </template>
           <el-menu-item index="/collection-tasks">采集任务</el-menu-item>
+          <el-menu-item index="/scheduled-tasks">定时任务</el-menu-item>
           <el-menu-item index="/data-sinks">数据存储</el-menu-item>
+        </el-sub-menu>
+        <el-sub-menu index="alert">
+          <template #title>
+            <el-icon><Bell /></el-icon>
+            <span>告警管理</span>
+          </template>
+          <el-menu-item index="/alert-strategies">告警策略</el-menu-item>
+          <el-menu-item index="/alert-groups">告警组</el-menu-item>
+          <el-menu-item index="/notification-channels">通知渠道</el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="infra">
           <template #title>
@@ -41,13 +51,14 @@
             <span>基础设施</span>
           </template>
           <el-menu-item index="/collectors">采集器管理</el-menu-item>
+          <el-menu-item index="/users">用户管理</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="app-header">
         <div class="header-right">
-          <el-tag type="success">Phase 1</el-tag>
+          <el-tag type="success">Phase 2</el-tag>
           <el-dropdown>
             <span class="user-info">admin</span>
             <template #dropdown>
@@ -67,7 +78,7 @@
 </template>
 
 <script setup>
-import { Monitor, Grid, List, Setting } from '@element-plus/icons-vue'
+import { Monitor, Grid, List, Setting, Bell } from '@element-plus/icons-vue'
 </script>
 
 <style>

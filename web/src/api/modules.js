@@ -70,3 +70,53 @@ export const statusApi = {
   global: () => api.get('/status/global'),
   zoneOverview: (zoneId) => api.get(`/status/zones/${zoneId}`),
 }
+
+export const userApi = {
+  list: (params) => api.get('/users', { params }),
+  get: (id) => api.get(`/users/${id}`),
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  delete: (id) => api.delete(`/users/${id}`),
+}
+
+export const notificationChannelApi = {
+  list: (params) => api.get('/notification-channels', { params }),
+  get: (id) => api.get(`/notification-channels/${id}`),
+  create: (data) => api.post('/notification-channels', data),
+  update: (id, data) => api.put(`/notification-channels/${id}`, data),
+  delete: (id) => api.delete(`/notification-channels/${id}`),
+  test: (id) => api.post(`/notification-channels/${id}/test`),
+}
+
+export const alertGroupApi = {
+  list: () => api.get('/alert-groups'),
+  get: (id) => api.get(`/alert-groups/${id}`),
+  create: (data) => api.post('/alert-groups', data),
+  update: (id, data) => api.put(`/alert-groups/${id}`, data),
+  delete: (id) => api.delete(`/alert-groups/${id}`),
+  listMembers: (id) => api.get(`/alert-groups/${id}/members`),
+  addMember: (id, data) => api.post(`/alert-groups/${id}/members`, data),
+  removeMember: (id, userId) => api.delete(`/alert-groups/${id}/members/${userId}`),
+}
+
+export const alertStrategyApi = {
+  list: (params) => api.get('/alert-strategies', { params }),
+  get: (id) => api.get(`/alert-strategies/${id}`),
+  create: (data) => api.post('/alert-strategies', data),
+  update: (id, data) => api.put(`/alert-strategies/${id}`, data),
+  delete: (id) => api.delete(`/alert-strategies/${id}`),
+  linkInstance: (id, data) => api.post(`/alert-strategies/${id}/instances`, data),
+  listInstances: (id) => api.get(`/alert-strategies/${id}/instances`),
+  unlinkInstance: (id, instanceId) => api.delete(`/alert-strategies/${id}/instances/${instanceId}`),
+}
+
+export const scheduledTaskApi = {
+  list: (params) => api.get('/scheduled-tasks', { params }),
+  get: (id) => api.get(`/scheduled-tasks/${id}`),
+  create: (data) => api.post('/scheduled-tasks', data),
+  update: (id, data) => api.put(`/scheduled-tasks/${id}`, data),
+  delete: (id) => api.delete(`/scheduled-tasks/${id}`),
+  enable: (id) => api.post(`/scheduled-tasks/${id}/enable`),
+  disable: (id) => api.post(`/scheduled-tasks/${id}/disable`),
+  listExecutions: (id, params) => api.get(`/scheduled-tasks/${id}/executions`, { params }),
+}
