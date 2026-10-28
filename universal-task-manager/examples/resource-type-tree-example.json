@@ -1,0 +1,216 @@
+{
+  "name": "资源类型树示例",
+  "description": "展示资源类型树的层级结构、父子继承、公共指标配置",
+  "tree": [
+    {
+      "type_id": "infrastructure",
+      "name": "基础设施",
+      "parent_id": null,
+      "icon": "server",
+      "description": "所有基础设施资源的根节点",
+      "common_metrics": [
+        { "metric_id": "uptime", "name": "up", "help": "是否可达" }
+      ],
+      "children": [
+        {
+          "type_id": "os",
+          "name": "操作系统",
+          "parent_id": "infrastructure",
+          "icon": "monitor",
+          "description": "操作系统类型",
+          "common_metrics": [
+            { "metric_id": "cpu_usage", "name": "node_cpu_seconds_total", "help": "CPU使用时间" },
+            { "metric_id": "memory_usage", "name": "node_memory_MemAvailable_bytes", "help": "可用内存" }
+          ],
+          "children": [
+            {
+              "type_id": "linux",
+              "name": "Linux",
+              "parent_id": "os",
+              "icon": "linux",
+              "description": "Linux 操作系统",
+              "common_metrics": [
+                { "metric_id": "disk_io", "name": "node_disk_io_time_seconds_total", "help": "磁盘IO时间" }
+              ],
+              "children": [
+                {
+                  "type_id": "linux-centos",
+                  "name": "CentOS",
+                  "parent_id": "linux",
+                  "icon": "centos",
+                  "description": "CentOS 发行版",
+                  "children": []
+                },
+                {
+                  "type_id": "linux-ubuntu",
+                  "name": "Ubuntu",
+                  "parent_id": "linux",
+                  "icon": "ubuntu",
+                  "description": "Ubuntu 发行版",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type_id": "windows",
+              "name": "Windows",
+              "parent_id": "os",
+              "icon": "windows",
+              "description": "Windows 操作系统",
+              "common_metrics": [
+                { "metric_id": "win_cpu", "name": "windows_cpu_time_total", "help": "CPU时间" }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type_id": "database",
+          "name": "数据库",
+          "parent_id": "infrastructure",
+          "icon": "database",
+          "description": "数据库中间件",
+          "common_metrics": [
+            { "metric_id": "db_connections", "name": "db_connections_total", "help": "当前连接数" },
+            { "metric_id": "db_queries", "name": "db_queries_total", "help": "查询总数" }
+          ],
+          "children": [
+            {
+              "type_id": "mysql",
+              "name": "MySQL",
+              "parent_id": "database",
+              "icon": "mysql",
+              "description": "MySQL 数据库",
+              "common_metrics": [
+                { "metric_id": "mysql_threads", "name": "mysql_global_status_threads_connected", "help": "连接线程数" },
+                { "metric_id": "mysql_buffer_pool", "name": "mysql_global_status_innodb_buffer_pool_pages_total", "help": "缓冲池页数" }
+              ],
+              "children": []
+            },
+            {
+              "type_id": "postgresql",
+              "name": "PostgreSQL",
+              "parent_id": "database",
+              "icon": "postgresql",
+              "description": "PostgreSQL 数据库",
+              "common_metrics": [
+                { "metric_id": "pg_active_connections", "name": "pg_stat_activity_count", "help": "活跃连接数" }
+              ],
+              "children": []
+            },
+            {
+              "type_id": "redis",
+              "name": "Redis",
+              "parent_id": "database",
+              "icon": "redis",
+              "description": "Redis 缓存",
+              "common_metrics": [
+                { "metric_id": "redis_memory", "name": "redis_used_memory_bytes", "help": "已用内存" },
+                { "metric_id": "redis_keys", "name": "redis_db_keys", "help": "键数量" }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type_id": "network",
+          "name": "网络设备",
+          "parent_id": "infrastructure",
+          "icon": "network-wired",
+          "description": "网络基础设施",
+          "common_metrics": [],
+          "children": [
+            {
+              "type_id": "switch",
+              "name": "交换机",
+              "parent_id": "network",
+              "icon": "network-wired",
+              "description": "网络交换机 (SNMP)",
+              "common_metrics": [
+                { "metric_id": "if_in_octets", "name": "ifInOctets", "help": "接口入流量" },
+                { "metric_id": "if_out_octets", "name": "ifOutOctets", "help": "接口出流量" }
+              ],
+              "children": []
+            },
+            {
+              "type_id": "router",
+              "name": "路由器",
+              "parent_id": "network",
+              "icon": "wifi",
+              "description": "网络路由器 (SNMP)",
+              "common_metrics": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type_id": "application",
+      "name": "应用服务",
+      "parent_id": null,
+      "icon": "app",
+      "description": "应用层服务的根节点",
+      "common_metrics": [],
+      "children": [
+        {
+          "type_id": "web-server",
+          "name": "Web服务器",
+          "parent_id": "application",
+          "icon": "globe",
+          "description": "Web 服务",
+          "common_metrics": [
+            { "metric_id": "http_requests", "name": "http_requests_total", "help": "HTTP请求总数" },
+            { "metric_id": "http_request_duration", "name": "http_request_duration_seconds", "help": "请求延迟" }
+          ],
+          "children": [
+            {
+              "type_id": "nginx",
+              "name": "Nginx",
+              "parent_id": "web-server",
+              "icon": "nginx",
+              "description": "Nginx Web服务器",
+              "common_metrics": [
+                { "metric_id": "nginx_connections", "name": "nginx_connections_total", "help": "连接数" }
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type_id": "mq",
+          "name": "消息队列",
+          "parent_id": "application",
+          "icon": "queue",
+          "description": "消息中间件",
+          "common_metrics": [],
+          "children": [
+            {
+              "type_id": "kafka",
+              "name": "Kafka",
+              "parent_id": "mq",
+              "icon": "kafka",
+              "description": "Apache Kafka",
+              "common_metrics": [
+                { "metric_id": "kafka_messages_in", "name": "kafka_server_brokertopicmetrics_messagesinpersec", "help": "消息流入速率" },
+                { "metric_id": "kafka_partitions", "name": "kafka_cluster_partition_count", "help": "分区数" }
+              ],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "inheritance_example": {
+    "description": "以 MySQL 实例为例，展示指标继承链",
+    "type_path": "infrastructure > database > mysql",
+    "inherited_metrics": [
+      { "from": "infrastructure", "metric": "up", "help": "是否可达" },
+      { "from": "database", "metric": "db_connections_total", "help": "当前连接数" },
+      { "from": "database", "metric": "db_queries_total", "help": "查询总数" },
+      { "from": "mysql", "metric": "mysql_global_status_threads_connected", "help": "连接线程数" },
+      { "from": "mysql", "metric": "mysql_global_status_innodb_buffer_pool_pages_total", "help": "缓冲池页数" }
+    ]
+  }
+}

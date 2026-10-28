@@ -1,0 +1,77 @@
+{
+  "data_sinks": [
+    {
+      "sink_id": "vm-prod",
+      "name": "VictoriaMetrics 生产集群",
+      "sink_type": "victoriametrics",
+      "protocol": "prometheus",
+      "zone_id": "zone-east-1",
+      "is_default": true,
+      "config": {
+        "remote_write_url": "http://vm-east-1:8428/api/v1/write",
+        "query_url": "http://vm-east-1:8428/api/v1/query",
+        "auth_type": "basic",
+        "username": "writer",
+        "password": "encrypted:xxx"
+      }
+    },
+    {
+      "sink_id": "es-logs",
+      "name": "Elasticsearch 日志集群",
+      "sink_type": "elasticsearch",
+      "protocol": "elasticsearch",
+      "zone_id": "zone-east-1",
+      "is_default": false,
+      "config": {
+        "endpoints": ["http://es-east-1:9200"],
+        "index_pattern": "logs-{yyyy.MM.dd}",
+        "auth_type": "basic",
+        "username": "elastic",
+        "password": "encrypted:xxx"
+      }
+    },
+    {
+      "sink_id": "loki-prod",
+      "name": "Loki 日志集群",
+      "sink_type": "loki",
+      "protocol": "loki",
+      "zone_id": "zone-west-1",
+      "is_default": false,
+      "config": {
+        "push_url": "http://loki-west-1:3100/loki/api/v1/push",
+        "query_url": "http://loki-west-1:3100/loki/api/v1/query",
+        "tenant_id": "production"
+      }
+    },
+    {
+      "sink_id": "s3-archive",
+      "name": "S3 归档存储",
+      "sink_type": "s3",
+      "protocol": "s3",
+      "zone_id": "zone-east-1",
+      "is_default": false,
+      "config": {
+        "bucket": "monitoring-archive",
+        "endpoint": "http://minio:9000",
+        "region": "us-east-1",
+        "access_key": "encrypted:xxx",
+        "secret_key": "encrypted:xxx",
+        "retention_days": 365
+      }
+    },
+    {
+      "sink_id": "oo-unified",
+      "name": "OpenObserve 统一平台",
+      "sink_type": "openobserve",
+      "protocol": "http",
+      "zone_id": "zone-core",
+      "is_default": true,
+      "config": {
+        "base_url": "http://openobserve-core:5080",
+        "organization": "default",
+        "auth_type": "bearer",
+        "token": "encrypted:xxx"
+      }
+    }
+  ]
+}

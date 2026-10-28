@@ -1,0 +1,146 @@
+{
+  "type_id": "linux-node",
+  "name": "Linux 主机采集",
+  "description": "采集Linux主机的系统指标，包括CPU、内存、磁盘、网络、进程等",
+  "source_type": "linux",
+  "collector": "vmagent",
+
+  "form_schema": {
+    "fields": [
+      {
+        "key": "scrape_interval",
+        "label": "采集间隔",
+        "type": "select",
+        "options": ["10s", "15s", "30s", "60s"],
+        "default": "15s",
+        "required": true,
+        "group": "基础配置"
+      },
+      {
+        "key": "enable_cpu",
+        "label": "CPU 指标",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "enable_memory",
+        "label": "内存指标",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "enable_disk",
+        "label": "磁盘指标",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "enable_network",
+        "label": "网络指标",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "enable_process",
+        "label": "进程指标",
+        "type": "boolean",
+        "default": false,
+        "group": "采集项"
+      },
+      {
+        "key": "disk_ignore_mounts",
+        "label": "忽略的挂载点",
+        "type": "tags",
+        "default": ["/boot", "/run"],
+        "placeholder": "输入挂载点路径，回车添加",
+        "group": "高级配置"
+      },
+      {
+        "key": "network_ignore_interfaces",
+        "label": "忽略的网卡",
+        "type": "tags",
+        "default": ["lo", "docker0", "veth*"],
+        "placeholder": "输入网卡名，回车添加，支持通配符",
+        "group": "高级配置"
+      }
+    ]
+  },
+
+  "detail_panels": [
+    {
+      "key": "host_info",
+      "title": "主机信息",
+      "type": "info",
+      "fields": ["host", "os", "kernel", "arch", "uptime"]
+    },
+    {
+      "key": "collection",
+      "title": "采集配置",
+      "type": "info",
+      "fields": ["scrape_interval", "enable_cpu", "enable_memory", "enable_disk", "enable_network", "enable_process"]
+    },
+    {
+      "key": "metrics",
+      "title": "指标覆盖",
+      "type": "metric_list"
+    }
+  ],
+
+  "declared_metrics": [
+    { "name": "node_up", "type": "gauge", "help": "节点是否可达" },
+    { "name": "node_cpu_seconds_total", "type": "counter", "help": "CPU时间(秒)", "labels": ["cpu", "mode"] },
+    { "name": "node_load1", "type": "gauge", "help": "1分钟负载" },
+    { "name": "node_load5", "type": "gauge", "help": "5分钟负载" },
+    { "name": "node_load15", "type": "gauge", "help": "15分钟负载" },
+    { "name": "node_memory_memtotal_bytes", "type": "gauge", "help": "总内存(字节)" },
+    { "name": "node_memory_memfree_bytes", "type": "gauge", "help": "空闲内存(字节)" },
+    { "name": "node_memory_memavailable_bytes", "type": "gauge", "help": "可用内存(字节)" },
+    { "name": "node_memory_buffers_bytes", "type": "gauge", "help": "缓冲区(字节)" },
+    { "name": "node_memory_cached_bytes", "type": "gauge", "help": "缓存(字节)" },
+    { "name": "node_disk_read_bytes_total", "type": "counter", "help": "磁盘读取(字节)", "labels": ["device"] },
+    { "name": "node_disk_written_bytes_total", "type": "counter", "help": "磁盘写入(字节)", "labels": ["device"] },
+    { "name": "node_disk_io_time_seconds_total", "type": "counter", "help": "IO时间(秒)", "labels": ["device"] },
+    { "name": "node_filesystem_size_bytes", "type": "gauge", "help": "文件系统大小(字节)", "labels": ["mountpoint", "fstype"] },
+    { "name": "node_filesystem_avail_bytes", "type": "gauge", "help": "文件系统可用(字节)", "labels": ["mountpoint", "fstype"] },
+    { "name": "node_network_receive_bytes_total", "type": "counter", "help": "网络接收(字节)", "labels": ["device"] },
+    { "name": "node_network_transmit_bytes_total", "type": "counter", "help": "网络发送(字节)", "labels": ["device"] },
+    { "name": "node_procs_running", "type": "gauge", "help": "运行进程数" },
+    { "name": "node_procs_blocked", "type": "gauge", "help": "阻塞进程数" }
+  ],
+
+  "config_template": {
+    "vmagent": {
+      "job_name": "linux-{{instance_id}}",
+      "scrape_interval": "{{config.scrape_interval}}",
+      "static_configs": [{
+        "targets": ["{{instance.host}}:9100"],
+        "labels": {
+          "instance": "{{instance_id}}",
+          "zone": "{{zone.id}}"
+        }
+      }],
+      "params": {
+        "collector.cpu": ["{{config.enable_cpu}}"],
+        "collector.memory": ["{{config.enable_memory}}"],
+        "collector.disk": ["{{config.enable_disk}}"],
+        "collector.network": ["{{config.enable_network}}"],
+        "collector.process": ["{{config.enable_process}}"]
+      }
+    },
+    "alloy": {
+      "prometheus.scrape": {
+        "job_name": "linux-{{instance_id}}",
+        "scrape_interval": "{{config.scrape_interval}}",
+        "targets": [{
+          "__address__": "{{instance.host}}:9100",
+          "instance": "{{instance_id}}"
+        }],
+        "forward_to": ["prometheus.remote_write.default.receiver"]
+      }
+    }
+  }
+}

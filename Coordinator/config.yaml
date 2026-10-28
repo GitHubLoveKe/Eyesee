@@ -1,0 +1,24 @@
+zone_id: "zone-east-1"
+
+server:
+  http_addr: ":8080"
+
+gossip:
+  bind_port: 7946
+  seeds: []
+  node_name: "coordinator-1"
+
+management:
+  url: "http://localhost:9090"
+  auth_token: ""
+  sync_interval: "30s"
+
+health:
+  probe_interval: "15s"
+  heartbeat_timeout: "90s"
+  probe_timeout: "5s"
+  fail_threshold: 3
+
+distribution:
+  hash_partitions: 160
+  rebalance_debounce: "5s"

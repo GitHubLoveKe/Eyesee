@@ -1,0 +1,133 @@
+{
+  "type_id": "mysql-standard",
+  "name": "MySQL 标准采集",
+  "description": "采集MySQL实例的标准指标集，包括连接状态、查询统计、缓冲池、复制状态等",
+  "source_type": "mysql",
+  "collector": "vmagent",
+
+  "form_schema": {
+    "fields": [
+      {
+        "key": "scrape_interval",
+        "label": "采集间隔",
+        "type": "select",
+        "options": ["10s", "15s", "30s", "60s"],
+        "default": "15s",
+        "required": true,
+        "group": "基础配置"
+      },
+      {
+        "key": "enable_slow_query",
+        "label": "启用慢查询采集",
+        "type": "boolean",
+        "default": false,
+        "group": "采集项"
+      },
+      {
+        "key": "databases",
+        "label": "监控数据库列表",
+        "type": "tags",
+        "placeholder": "输入数据库名，回车添加",
+        "help": "留空则监控所有数据库",
+        "group": "采集项"
+      },
+      {
+        "key": "enable_replication",
+        "label": "启用复制状态采集",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "enable_innodb",
+        "label": "启用 InnoDB 指标",
+        "type": "boolean",
+        "default": true,
+        "group": "采集项"
+      },
+      {
+        "key": "connection_timeout",
+        "label": "连接超时",
+        "type": "select",
+        "options": ["5s", "10s", "30s"],
+        "default": "10s",
+        "group": "高级配置"
+      }
+    ]
+  },
+
+  "detail_panels": [
+    {
+      "key": "connection",
+      "title": "连接信息",
+      "type": "info",
+      "fields": ["host", "port", "credential_status", "version"]
+    },
+    {
+      "key": "collection",
+      "title": "采集配置",
+      "type": "info",
+      "fields": ["scrape_interval", "enable_slow_query", "databases", "enable_replication", "enable_innodb"]
+    },
+    {
+      "key": "metrics",
+      "title": "指标覆盖",
+      "type": "metric_list",
+      "display": "table"
+    },
+    {
+      "key": "logs",
+      "title": "运行日志",
+      "type": "log_viewer"
+    }
+  ],
+
+  "declared_metrics": [
+    { "name": "mysql_up", "type": "gauge", "help": "MySQL实例是否可达" },
+    { "name": "mysql_global_status_uptime", "type": "gauge", "help": "运行时间(秒)" },
+    { "name": "mysql_global_status_connections", "type": "counter", "help": "连接总数" },
+    { "name": "mysql_global_status_threads_connected", "type": "gauge", "help": "当前连接数" },
+    { "name": "mysql_global_status_threads_running", "type": "gauge", "help": "活跃线程数" },
+    { "name": "mysql_global_status_queries", "type": "counter", "help": "执行的查询总数" },
+    { "name": "mysql_global_status_questions", "type": "counter", "help": "慢查询总数" },
+    { "name": "mysql_global_status_bytes_received", "type": "counter", "help": "接收字节数" },
+    { "name": "mysql_global_status_bytes_sent", "type": "counter", "help": "发送字节数" },
+    { "name": "mysql_global_status_innodb_buffer_pool_pages_total", "type": "gauge", "help": "缓冲池总页数" },
+    { "name": "mysql_global_status_innodb_buffer_pool_pages_free", "type": "gauge", "help": "缓冲池空闲页数" },
+    { "name": "mysql_global_status_innodb_buffer_pool_pages_dirty", "type": "gauge", "help": "缓冲池脏页数" },
+    { "name": "mysql_slave_status_seconds_behind_master", "type": "gauge", "help": "复制延迟(秒)", "labels": ["channel"] },
+    { "name": "mysql_slave_status_slave_io_running", "type": "gauge", "help": "IO线程是否运行", "labels": ["channel"] },
+    { "name": "mysql_slave_status_slave_sql_running", "type": "gauge", "help": "SQL线程是否运行", "labels": ["channel"] }
+  ],
+
+  "config_template": {
+    "vmagent": {
+      "job_name": "mysql-{{instance_id}}",
+      "scrape_interval": "{{config.scrape_interval}}",
+      "scrape_timeout": "{{config.connection_timeout}}",
+      "static_configs": [{
+        "targets": ["{{instance.host}}:9104"],
+        "labels": {
+          "instance": "{{instance_id}}",
+          "zone": "{{zone.id}}"
+        }
+      }],
+      "params": {
+        "collect.slow_queries": ["{{config.enable_slow_query}}"],
+        "collect.replication": ["{{config.enable_replication}}"],
+        "collect.innodb": ["{{config.enable_innodb}}"]
+      }
+    },
+    "alloy": {
+      "prometheus.scrape": {
+        "job_name": "mysql-{{instance_id}}",
+        "scrape_interval": "{{config.scrape_interval}}",
+        "targets": [{
+          "__address__": "{{instance.host}}:9104",
+          "instance": "{{instance_id}}"
+        }],
+        "forward_to": ["prometheus.remote_write.default.receiver"]
+      }
+    }
+  }
+}
