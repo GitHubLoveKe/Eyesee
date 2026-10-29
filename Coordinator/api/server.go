@@ -16,6 +16,7 @@ import (
 	"coordinator/distribution"
 	"coordinator/health"
 	"coordinator/model"
+	"coordinator/module"
 )
 
 type Server struct {
@@ -27,6 +28,9 @@ type Server struct {
 	logger      *slog.Logger
 	mux         *http.ServeMux
 	httpServer  *http.Server
+
+	configGenerators  map[model.WorkerType]module.ConfigGenerator
+	validWorkerTypes  map[model.WorkerType]struct{}
 }
 
 func NewServer(
@@ -35,19 +39,42 @@ func NewServer(
 	dist *distribution.Distributor,
 	broker *distribution.EventBroker,
 	hc *health.Checker,
+	modules []module.Module,
 	logger *slog.Logger,
 ) *Server {
 	s := &Server{
-		cfg:         cfg,
-		store:       store,
-		distributor: dist,
-		broker:      broker,
-		healthChk:   hc,
-		logger:      logger.With("component", "api"),
-		mux:         http.NewServeMux(),
+		cfg:                cfg,
+		store:              store,
+		distributor:        dist,
+		broker:             broker,
+		healthChk:          hc,
+		logger:             logger.With("component", "api"),
+		mux:                http.NewServeMux(),
+		configGenerators:   make(map[model.WorkerType]module.ConfigGenerator),
+		validWorkerTypes:   make(map[model.WorkerType]struct{}),
 	}
+
+	for _, m := range modules {
+		for _, route := range m.Routes() {
+			s.validWorkerTypes[route.WorkerType] = struct{}{}
+		}
+		if cg, ok := m.(module.ConfigGenerator); ok {
+			for _, route := range m.Routes() {
+				s.configGenerators[route.WorkerType] = cg
+			}
+		}
+		if ra, ok := m.(module.RouteRegistrar); ok {
+			ra.RegisterRoutes(s)
+		}
+	}
+
 	s.registerRoutes()
 	return s
+}
+
+// Handle 实现 module.RouteRegistry 接口，供模块注册自定义路由。
+func (s *Server) Handle(pattern string, handler http.HandlerFunc) {
+	s.mux.HandleFunc(pattern, handler)
 }
 
 func (s *Server) registerRoutes() {
@@ -77,10 +104,12 @@ func (s *Server) routeWorker(w http.ResponseWriter, r *http.Request) {
 		s.handleWorkerHeartbeat(w, r, workerID)
 	case subPath == "assignments" && r.Method == http.MethodGet:
 		s.handleWorkerAssignments(w, r, workerID)
+	case subPath == "config" && r.Method == http.MethodGet:
+		s.handleWorkerConfig(w, r, workerID)
 	case subPath == "scrape-config" && r.Method == http.MethodGet:
-		s.handleWorkerScrapeConfig(w, r, workerID)
+		s.handleWorkerConfig(w, r, workerID)
 	case subPath == "rules" && r.Method == http.MethodGet:
-		s.handleWorkerRules(w, r, workerID)
+		s.handleWorkerConfig(w, r, workerID)
 	default:
 		http.NotFound(w, r)
 	}
@@ -141,8 +170,8 @@ func (s *Server) handleWorkerRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wt := model.WorkerType(reg.WorkerType)
-	if wt != model.WorkerVMAgent && wt != model.WorkerVMAlert {
-		writeError(w, http.StatusBadRequest, "worker_type must be vmagent or vmalert")
+	if _, ok := s.validWorkerTypes[wt]; !ok {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("unsupported worker_type: %s", reg.WorkerType))
 		return
 	}
 
@@ -215,46 +244,28 @@ func (s *Server) handleWorkerAssignments(w http.ResponseWriter, _ *http.Request,
 	})
 }
 
-func (s *Server) handleWorkerScrapeConfig(w http.ResponseWriter, _ *http.Request, workerID string) {
+// handleWorkerConfig 通用配置下发：根据 worker 类型查找对应模块的 ConfigGenerator。
+func (s *Server) handleWorkerConfig(w http.ResponseWriter, _ *http.Request, workerID string) {
 	worker := s.store.GetWorker(workerID)
 	if worker == nil {
 		writeError(w, http.StatusNotFound, "worker not found")
 		return
 	}
-	if worker.Type != model.WorkerVMAgent {
-		writeError(w, http.StatusBadRequest, "worker is not vmagent")
+
+	cg, ok := s.configGenerators[worker.Type]
+	if !ok {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("no config generator for worker type: %s", worker.Type))
 		return
 	}
 
-	data, err := s.distributor.GenerateScrapeConfig(workerID)
+	assignment := s.distributor.GetAssignment(workerID)
+	data, err := cg.GenerateWorkerConfig(workerID, assignment)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "generate scrape config failed")
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("generate config failed: %v", err))
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/x-yaml")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
-}
-
-func (s *Server) handleWorkerRules(w http.ResponseWriter, _ *http.Request, workerID string) {
-	worker := s.store.GetWorker(workerID)
-	if worker == nil {
-		writeError(w, http.StatusNotFound, "worker not found")
-		return
-	}
-	if worker.Type != model.WorkerVMAlert {
-		writeError(w, http.StatusBadRequest, "worker is not vmalert")
-		return
-	}
-
-	data, err := s.distributor.GenerateAlertRules(workerID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "generate rules failed")
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Header().Set("Content-Type", cg.ConfigContentType())
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
 }

@@ -1,6 +1,134 @@
 # 扩展开发指南
 
-> 描述如何通过注册新的任务类型来扩展系统，支持新的采集场景。
+> 描述如何扩展系统：1) 通过 Coordinator 可插拔模块新增功能域；2) 通过注册新的任务类型来扩展采集场景。
+
+---
+
+## 〇、Coordinator 可插拔模块开发
+
+> Coordinator 采用 Module 插件架构，每个功能域（metrics/traces/logs/network）是一个独立模块。新增功能只需实现 Module 接口并注册。
+
+### 0.1 Module 接口
+
+```go
+// module/module.go
+type Module interface {
+    Name() string
+    Init(ctx ModuleContext) error
+    Start(ctx context.Context) error
+    Stop(ctx context.Context) error
+    Routes() []TaskRoute
+}
+
+type TaskRoute struct {
+    WorkerType model.WorkerType
+    TaskFilter func(*model.CollectionTask) bool  // nil = 不处理 task
+    RuleFilter func(*model.AlertRule) bool        // nil = 不处理 rule
+}
+```
+
+可选接口：
+
+```go
+// 为 worker 生成下发配置
+type ConfigGenerator interface {
+    GenerateWorkerConfig(workerID string, assignment *model.Assignment) ([]byte, error)
+    ConfigContentType() string
+}
+
+// 注册自定义 HTTP API 路由
+type RouteRegistrar interface {
+    RegisterRoutes(registry RouteRegistry)
+}
+```
+
+### 0.2 新增模块步骤
+
+以新增 `profiling` 模块为例：
+
+**Step 1：创建模块包**
+
+```go
+// module/profiling/profiling.go
+package profiling
+
+import (
+    "context"
+    "coordinator/model"
+    "coordinator/module"
+)
+
+func init() {
+    module.Register(&ProfilingModule{})
+}
+
+type ProfilingModule struct{}
+
+func (m *ProfilingModule) Name() string                    { return "profiling" }
+func (m *ProfilingModule) Init(_ module.ModuleContext) error { return nil }
+func (m *ProfilingModule) Start(_ context.Context) error    { return nil }
+func (m *ProfilingModule) Stop(_ context.Context) error     { return nil }
+
+func (m *ProfilingModule) Routes() []module.TaskRoute {
+    return []module.TaskRoute{
+        {
+            WorkerType: model.WorkerOTelCollector,
+            TaskFilter: func(t *model.CollectionTask) bool {
+                return t.ModuleName() == "profiling"
+            },
+        },
+    }
+}
+```
+
+**Step 2：blank import**
+
+```go
+// cmd/coordinator/main.go
+import (
+    _ "coordinator/module/profiling"
+)
+```
+
+**Step 3：config.yaml 启用**
+
+```yaml
+enabled_modules:
+  - metrics
+  - profiling
+```
+
+完成。无需修改 Coordinator、Distributor、API Server 等核心代码。
+
+### 0.3 模块数据流
+
+```
+config.yaml (enabled_modules)
+       │
+       ▼
+  Coordinator.Init()
+       │
+       ├── module.Get("profiling") → ProfilingModule
+       ├── ProfilingModule.Init(ModuleContext)
+       ├── ProfilingModule.Routes() → [{otel-collector, filter}]
+       │
+       └── Distributor.SetModuleRoutes(routes)
+              │
+              ▼
+         Rebalance()
+              ├── 构建 Ring[otel-collector]
+              ├── 用 filter 过滤 module="profiling" 的 tasks
+              └── hash(taskID) → ring → 分配给 otel-collector worker
+```
+
+### 0.4 现有模块一览
+
+| 模块 | WorkerType | 配置生成 | 状态 |
+|------|------------|----------|------|
+| metrics | vmagent, vmalert | scrape_config YAML, rule_groups YAML | 已实现 |
+| traces | otel-collector | — | stub |
+| logs | otel-collector | — | stub |
+| network | exporter | — | stub |
 
 ---
 

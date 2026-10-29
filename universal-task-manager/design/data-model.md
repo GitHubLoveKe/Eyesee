@@ -202,6 +202,7 @@ CREATE TABLE collection_task (
     task_id         VARCHAR(64) PRIMARY KEY,
     instance_id     VARCHAR(64) NOT NULL,
     type_id         VARCHAR(64) NOT NULL,
+    module          VARCHAR(32) DEFAULT 'metrics' COMMENT '所属功能模块: metrics/traces/logs/network',
     node_id         VARCHAR(64) COMMENT '分配的采集器节点',
     data_sink_id    VARCHAR(64) COMMENT '目标存储，未指定则用网区默认；引用 data_sink.sink_id',
     name            VARCHAR(256) NOT NULL,
@@ -218,6 +219,7 @@ CREATE TABLE collection_task (
 
 CREATE INDEX idx_ct_instance ON collection_task(instance_id);
 CREATE INDEX idx_ct_type ON collection_task(type_id);
+CREATE INDEX idx_ct_module ON collection_task(module);
 CREATE INDEX idx_ct_node ON collection_task(node_id);
 CREATE INDEX idx_ct_status ON collection_task(status);
 ```
@@ -296,6 +298,7 @@ CREATE INDEX idx_zc_status ON zone_coordinator(status);
 CREATE TABLE rc_rule (
     rule_id         VARCHAR(64) PRIMARY KEY,
     task_id         VARCHAR(64) NOT NULL,
+    module          VARCHAR(32) DEFAULT 'metrics' COMMENT '所属功能模块: metrics/traces/logs/network',
     alert_name      VARCHAR(256) NOT NULL,
     expr            TEXT NOT NULL COMMENT 'PromQL表达式(变量已替换)',
     duration        VARCHAR(32) NOT NULL COMMENT '持续时间: 5m, 10s',
@@ -307,6 +310,7 @@ CREATE TABLE rc_rule (
 );
 
 CREATE INDEX idx_rule_task ON rc_rule(task_id);
+CREATE INDEX idx_rule_module ON rc_rule(module);
 ```
 
 ### 3.6 MetricDefinition（指标定义）
@@ -475,7 +479,7 @@ CREATE TABLE collector_node (
     node_id         VARCHAR(64) PRIMARY KEY,
     zone_id         VARCHAR(64) NOT NULL,
     name            VARCHAR(128) NOT NULL,
-    node_type       VARCHAR(32) NOT NULL COMMENT 'vmagent/prometheus/alloy',
+    node_type       VARCHAR(32) NOT NULL COMMENT 'vmagent/vmalert/otel-collector/exporter/prometheus/alloy',
     address         VARCHAR(256) NOT NULL COMMENT 'http://ip:port',
     health_endpoint VARCHAR(256) DEFAULT '/-/healthy',
     labels          JSON,

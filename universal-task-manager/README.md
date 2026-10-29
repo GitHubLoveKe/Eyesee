@@ -78,12 +78,15 @@
         |              | |              | |              |
         | 区协调器     | | 区协调器     | | 区协调器     |
         | (gossip)     | | (gossip)     | | (gossip)     |
-        | 协调:        | | 协调:        | | 协调:        |
+        | 可插拔模块:  | | 可插拔模块:  | | 可插拔模块:  |
+        |  [metrics]   | |  [metrics]   | |  [metrics]   |
         |  vmalert × N | |  vmalert × N | |  vmalert     |
         |  vmagent × N | |  vmagent × N | | prometheus ×N|
+        |  [traces]    | |  [traces]    | |  [logs]      |
+        |  otel-col× N | |  otel-col× N | |  otel-col× N |
         | 区AM(去重)   | | 区AM(去重)   | | 区AM(去重)   |
         | DataSink:    | | DataSink:    | | DataSink:    |
-        |  VM + ES     | |  VM + Loki   | |  VM + S3     |
+        |  VM+Tempo+ES | |  VM+Tempo    | |  VM+Loki+S3  |
         +------+-------+ +------+-------+ +------+-------+
                |                |                |
                +----------------+----------------+
@@ -117,7 +120,8 @@ BusinessSystem (业务系统)
   |-- Zone (网区) x N
   |     |-- NetworkSegment (网段) x N
   |     |-- ZoneCoordinator (区协调器, gossip) x 1
-  |     |     └── 协调: vmalert × N, vmagent × N, prometheus × N 的 job 分配
+  |     |     └── 可插拔模块: [metrics] [traces] [logs] [network]
+  |     |        协调: vmalert × N, vmagent × N, otel-collector × N, exporter × N
   |     |-- CollectorNode (采集器/vmalert 节点) x N
   |     |-- DataSink (数据存储) x N
   |     |

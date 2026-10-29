@@ -24,8 +24,10 @@ const (
 type WorkerType string
 
 const (
-	WorkerVMAgent WorkerType = "vmagent"
-	WorkerVMAlert WorkerType = "vmalert"
+	WorkerVMAgent       WorkerType = "vmagent"
+	WorkerVMAlert       WorkerType = "vmalert"
+	WorkerOTelCollector WorkerType = "otel-collector"
+	WorkerExporter      WorkerType = "exporter"
 )
 
 type NodeStatus string
@@ -64,18 +66,27 @@ type Worker struct {
 }
 
 type CollectionTask struct {
-	TaskID     string          `json:"task_id"`
-	InstanceID string          `json:"instance_id"`
-	Name       string          `json:"name"`
-	ZoneID     string          `json:"zone_id"`
-	Config     json.RawMessage `json:"config"`
-	Enabled    bool            `json:"enabled"`
-	Target     string          `json:"target"`
-	JobName    string          `json:"job_name"`
-	MetricsPath string         `json:"metrics_path"`
-	ScrapeInterval string      `json:"scrape_interval"`
-	Labels     map[string]string `json:"labels"`
-	Auth       *AuthConfig     `json:"auth,omitempty"`
+	TaskID         string            `json:"task_id"`
+	Module         string            `json:"module"`
+	InstanceID     string            `json:"instance_id"`
+	Name           string            `json:"name"`
+	ZoneID         string            `json:"zone_id"`
+	Config         json.RawMessage   `json:"config"`
+	Enabled        bool              `json:"enabled"`
+	Target         string            `json:"target"`
+	JobName        string            `json:"job_name"`
+	MetricsPath    string            `json:"metrics_path"`
+	ScrapeInterval string            `json:"scrape_interval"`
+	Labels         map[string]string `json:"labels"`
+	Auth           *AuthConfig       `json:"auth,omitempty"`
+}
+
+// ModuleName 返回任务所属模块名。为空时默认 "metrics"（向后兼容）。
+func (t *CollectionTask) ModuleName() string {
+	if t.Module == "" {
+		return "metrics"
+	}
+	return t.Module
 }
 
 type AuthConfig struct {
@@ -84,17 +95,26 @@ type AuthConfig struct {
 }
 
 type AlertRule struct {
-	RuleID      string            `json:"rule_id"`
-	TaskID      string            `json:"task_id"`
-	ZoneID      string            `json:"zone_id"`
-	AlertName   string            `json:"alert_name"`
-	Expr        string            `json:"expr"`
-	Duration    string            `json:"duration"`
-	Severity    string            `json:"severity"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-	GroupName   string            `json:"group_name"`
-	GroupInterval string          `json:"group_interval"`
+	RuleID        string            `json:"rule_id"`
+	Module        string            `json:"module"`
+	TaskID        string            `json:"task_id"`
+	ZoneID        string            `json:"zone_id"`
+	AlertName     string            `json:"alert_name"`
+	Expr          string            `json:"expr"`
+	Duration      string            `json:"duration"`
+	Severity      string            `json:"severity"`
+	Labels        map[string]string `json:"labels"`
+	Annotations   map[string]string `json:"annotations"`
+	GroupName     string            `json:"group_name"`
+	GroupInterval string            `json:"group_interval"`
+}
+
+// ModuleName 返回规则所属模块名。为空时默认 "metrics"（向后兼容）。
+func (r *AlertRule) ModuleName() string {
+	if r.Module == "" {
+		return "metrics"
+	}
+	return r.Module
 }
 
 type Store struct {
@@ -245,6 +265,30 @@ func (s *Store) GetAllRules() []*AlertRule {
 	out := make([]*AlertRule, 0, len(s.rules))
 	for _, r := range s.rules {
 		out = append(out, r)
+	}
+	return out
+}
+
+func (s *Store) GetTasksByModule(moduleName string) []*CollectionTask {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []*CollectionTask
+	for _, t := range s.tasks {
+		if t.Enabled && t.ModuleName() == moduleName {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func (s *Store) GetRulesByModule(moduleName string) []*AlertRule {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []*AlertRule
+	for _, r := range s.rules {
+		if r.ModuleName() == moduleName {
+			out = append(out, r)
+		}
 	}
 	return out
 }
